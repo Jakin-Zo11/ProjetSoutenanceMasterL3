@@ -9,7 +9,8 @@ import {
   Image,
   StatusBar,
 } from 'react-native';
-import { login } from '../../services/api';
+// TODO: reconnecter à login une fois l'API backend prête
+// import { login } from '../../services/api';
 
 interface JuryLoginScreenProps {
   onSuccess: () => void;
@@ -30,14 +31,12 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
     }
     setIsLoading(true);
     setErrorMessage('');
-    try {
-      await login(email.trim(), password);
+    // TODO: reconnecter à login une fois l'API backend prête
+    setTimeout(() => {
+      // Mock login - accepte n'importe quel email/password pour la démo
       onSuccess();
-    } catch {
-      setErrorMessage('Identifiants incorrects ou serveur indisponible.');
-    } finally {
       setIsLoading(false);
-    }
+    }, 800)
   };
 
   return (

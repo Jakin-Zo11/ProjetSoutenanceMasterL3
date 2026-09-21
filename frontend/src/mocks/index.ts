@@ -1,0 +1,9 @@
+export { mockStudents } from './students';
+export { mockTeachers } from './teachers';
+export { mockJurys } from './jurys';
+export { mockRooms } from './rooms';
+export { mockDefenses } from './defenses';
+export { mockSlots } from './slots';
+export { mockEvaluations } from './evaluations';
+export { mockResults } from './results';
+export { mockReports } from './reports';

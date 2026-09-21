@@ -7,24 +7,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        // EMIT Brand Colors
-        'emit-navy': '#050840',
-        'emit-sky': '#95C5F2',
-        'emit-bg': '#EBF3FA',
-        // Status Colors
-        'emit-success': '#10B981',
-        'emit-success-bg': '#E1F8F0',
-        'emit-success-text': '#065F46',
-        'emit-warning': '#F59E0B',
-        'emit-warning-bg': '#FEF3C7',
-        'emit-warning-text': '#92400E',
-        'emit-error': '#EF4444',
-        'emit-error-bg': '#FFF1F1',
-        'emit-error-text': '#991B1B',
+        emit: {
+          navy: '#0D1F4E',
+          primary: '#1A4BA8',
+          sky: '#2D84E0',
+          skyLight: '#EAF4FF',
+          bg: '#F0F5FB',
+          card: '#FFFFFF',
+          border: '#DDEAF7',
+          text: '#0B1D3A',
+          muted: '#637799',
+          error: '#DC2626',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
+        heading: ['Plus Jakarta Sans', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+      },
+      borderRadius: {
+        emit: '10px',
       },
     },
   },
