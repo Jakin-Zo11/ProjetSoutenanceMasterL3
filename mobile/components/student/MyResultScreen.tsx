@@ -5,20 +5,24 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { Ionicons } from '@expo/vector-icons';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
-const MyResultScreen: React.FC<ScreenProps> = ({ onBack }) => {
+const MyResultScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
+  // Données locales (Mock Data) — aucune requête réseau.
   const resultData = {
     isAvailable: true,
     finalGrade: 16.5,
     mention: 'Très Bien',
     isAdmitted: true,
+    memoStatus: 'Validé le 10 Décembre 2024',
+    advisorApproval: 'Favorable',
     juryGrades: [
       { role: 'Président', name: 'Prof. Randriamanana', grade: 17 },
       { role: 'Rapporteur', name: 'Dr. Rasoarimanana', grade: 16 },
@@ -33,7 +37,7 @@ const MyResultScreen: React.FC<ScreenProps> = ({ onBack }) => {
         <TopBar title="Mon résultat" showBackButton onBackPress={onBack} showNotification />
         
         <View style={styles.waitingContainer}>
-          <Text style={styles.waitingIcon}>⏳</Text>
+          <Ionicons name="hourglass-outline" size={48} color="#1A4BA8" />
           <Text style={styles.waitingTitle}>En attente de délibération</Text>
           <Text style={styles.waitingSubtitle}>
             Les résultats seront disponibles après la réunion du jury
@@ -42,14 +46,9 @@ const MyResultScreen: React.FC<ScreenProps> = ({ onBack }) => {
         </View>
 
         <BottomNav
-          items={[
-            { id: 'home', icon: '🏠', label: 'Accueil' },
-            { id: 'defense', icon: '📅', label: 'Soutenance' },
-            { id: 'thesis', icon: '📄', label: 'Thèse' },
-            { id: 'profile', icon: '👤', label: 'Profil' },
-          ]}
-          activeTab="defense"
-          onTabChange={() => {}}
+          items={studentTabItems}
+          activeTab="result"
+          onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
         />
       </SafeAreaView>
     );
@@ -74,9 +73,29 @@ const MyResultScreen: React.FC<ScreenProps> = ({ onBack }) => {
           </View>
 
           <View style={[styles.admissionBadge, resultData.isAdmitted ? styles.admitted : styles.failed]}>
-            <Text style={styles.admissionBadgeText}>
-              {resultData.isAdmitted ? '✓ Admis' : '✗ Ajourné'}
-            </Text>
+            <Ionicons
+              name={resultData.isAdmitted ? 'checkmark-circle-outline' : 'close-circle-outline'}
+              size={16}
+              color="#FFFFFF"
+            />
+            <Text style={styles.admissionBadgeText}>{resultData.isAdmitted ? 'Admis' : 'Ajourné'}</Text>
+          </View>
+        </View>
+
+        {/* Mémoire Validation Status */}
+        <View style={styles.juryGradesCard}>
+          <Text style={styles.cardTitle}>Statut de validation du mémoire</Text>
+          <View style={styles.averageRow}>
+            <Text style={styles.averageLabel}>Dépôt du mémoire</Text>
+            <Text style={styles.averageResult}>{resultData.memoStatus}</Text>
+          </View>
+          <View style={styles.averageRow}>
+            <Text style={styles.averageLabel}>Avis de l’encadreur</Text>
+            <Text style={styles.averageResult}>{resultData.advisorApproval}</Text>
+          </View>
+          <View style={[styles.admissionBadge, styles.admitted]}>
+            <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.admissionBadgeText}>Mémoire validé</Text>
           </View>
         </View>
 
@@ -115,14 +134,9 @@ const MyResultScreen: React.FC<ScreenProps> = ({ onBack }) => {
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
-        activeTab="defense"
-        onTabChange={() => {}}
+        items={studentTabItems}
+        activeTab="result"
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -170,14 +184,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     margin: 20,
     marginTop: 20,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 32,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.06)',
+    elevation: 4,
   },
   gradeLabel: {
     fontSize: 16,
@@ -206,7 +219,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A4BA8',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 8,
     marginBottom: 16,
   },
   mentionBadgeText: {
@@ -218,7 +231,7 @@ const styles = StyleSheet.create({
   admissionBadge: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 8,
   },
   admitted: {
     backgroundColor: '#10B981',
@@ -236,12 +249,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginTop: 16,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   averageCard: {
@@ -249,12 +261,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   cardTitle: {
@@ -291,7 +302,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF4FF',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'baseline',
   },

@@ -5,19 +5,23 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Pressable,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { Ionicons } from '@expo/vector-icons';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
-const StudentProfileScreen: React.FC<ScreenProps> = ({ onBack }) => {
+// Données locales (Mock Data) — aucune requête réseau.
+const StudentProfileScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
   const studentData = {
     initials: 'RJ',
     name: 'Rakoto Jean',
-    filiere: 'Master 1 - Informatique',
+    filiere: 'Master 2 - Informatique',
+    niveau: 'M2 (Master 2)',
     matricule: 'MAT-2024-001',
     email: 'rakoto.jean@emit.mg',
     phone: '+261 34 00 000 00',
@@ -58,6 +62,13 @@ const StudentProfileScreen: React.FC<ScreenProps> = ({ onBack }) => {
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Niveau</Text>
+              <Text style={styles.infoValue}>{studentData.niveau}</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Email</Text>
               <Text style={styles.infoValue}>{studentData.email}</Text>
             </View>
@@ -87,24 +98,21 @@ const StudentProfileScreen: React.FC<ScreenProps> = ({ onBack }) => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>✏️ Modifier mon profil</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, styles.logoutButton]}>
-            <Text style={styles.logoutButtonText}>🚪 Déconnexion</Text>
-          </TouchableOpacity>
+          <Pressable style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.8 }]}>
+            <Ionicons name="create-outline" size={18} color="#1A4BA8" />
+            <Text style={styles.actionButtonText}>Modifier mon profil</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.actionButton, styles.logoutButton, pressed && { opacity: 0.8 }]}>
+            <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.logoutButtonText}>Déconnexion</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
+        items={studentTabItems}
         activeTab="profile"
-        onTabChange={() => {}}
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -161,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2D84E0',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   studentBadgeText: {
@@ -174,13 +182,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     margin: 20,
     marginTop: -24,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.06)',
+    elevation: 4,
   },
   cardTitle: {
     fontSize: 18,
@@ -217,12 +224,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#1A4BA8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   actionButtonText: {

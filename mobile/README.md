@@ -3,17 +3,9 @@
 Application mobile React Native pour les espaces **Étudiant** et **Jury**.
 L'administration reste dans le projet web `frontend/`.
 
-## API locale
+## Données locales
 
-Pour un émulateur Android, l'application utilise par défaut `http://10.0.2.2:8000/api`.
-Pour un téléphone réel, définissez l'URL Laravel accessible sur le réseau avant de lancer Expo :
-
-```powershell
-$env:EXPO_PUBLIC_API_URL = "http://192.168.1.10:8000/api"
-npm start
-```
-
-Le backend doit être lancé avec `php artisan serve --host=0.0.0.0` pour être accessible depuis le téléphone.
+L'application mobile est actuellement une interface graphique autonome. Les écrans utilisent uniquement des données mockées locales et ne contactent pas l'API Laravel.
 
 ## Vérification
 
@@ -25,10 +17,8 @@ npm start
 ## Fonctionnement
 
 - L'utilisateur choisit l'espace Étudiant ou Jury.
-- La connexion utilise `POST /api/v1/auth/login`.
-- Le token Sanctum est conservé dans `expo-secure-store`.
-
-Les écrans de données métier seront branchés aux endpoints Étudiant/Jury dès que ces routes seront disponibles côté Laravel.
+- La connexion et les parcours affichés sont simulés localement pour cette phase de conception.
+- La connexion à Laravel sera ajoutée ultérieurement, après validation des écrans et des endpoints mobiles.
 
 ## Get started
 

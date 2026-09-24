@@ -50,7 +50,7 @@ const AssignmentPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <AlertTriangle size={20} className="text-[#2D84E0]" />
           <p className="text-sm font-medium text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-            Règle : Exactement 3 membres par jury (Président, Rapporteur, Examinateur). Pas de doublon sur le même créneau.
+            Règle : 3 membres minimum par jury (Président, Rapporteur, Examinateur). Des membres supplémentaires sont autorisés, sans doublon sur le même créneau.
           </p>
         </div>
       </div>

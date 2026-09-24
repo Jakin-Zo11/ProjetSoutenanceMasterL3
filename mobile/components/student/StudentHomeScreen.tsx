@@ -5,15 +5,17 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Pressable,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { Ionicons } from '@expo/vector-icons';
 import { StudentProfile } from './StudentLoginScreen';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
 interface ShortcutCardProps {
-  icon: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;
   locked?: boolean;
   onPress: () => void;
@@ -29,46 +31,163 @@ interface StudentHomeScreenProps {
 }
 
 const ShortcutCard: React.FC<ShortcutCardProps> = ({ icon, title, locked, onPress }) => (
-  <TouchableOpacity onPress={onPress} disabled={locked} style={[styles.shortcutCard, locked && styles.shortcutCardLocked]}>
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [styles.shortcutCard, locked && styles.shortcutCardLocked, pressed && { opacity: 0.8 }]}
+  >
     <View style={styles.shortcutIcon}>
-      <Text style={styles.shortcutIconText}>{icon}</Text>
+      <Ionicons name={icon} size={24} color="#0D1F4E" />
     </View>
     <Text style={styles.shortcutTitle}>{title}</Text>
     {locked ? <Text style={styles.lockedText}>Après soutenance</Text> : null}
-  </TouchableOpacity>
+  </Pressable>
 );
 
 const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSubmitted, convocationReady, onNavigate, onOpenTheme, onExit }) => {
 
-  const shortcuts = [
-    { icon: '📅', title: 'Ma soutenance', screen: 'student-defense', locked: !convocationReady },
-    { icon: '📄', title: 'Ma convocation', screen: 'student-convocation', locked: !convocationReady },
-    { icon: '📚', title: 'Mon sujet de thèse', screen: 'student-thesis' },
-    { icon: '📊', title: 'Mon résultat', screen: 'student-result', locked: true },
-    { icon: '📝', title: 'PV de soutenance', screen: 'student-pv', locked: true },
-    { icon: '🔔', title: 'Notifications', screen: 'student-notifications', locked: true },
+  const shortcuts: {
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    title: string;
+    screen: string;
+    locked?: boolean;
+  }[] = [
+    { icon: 'calendar-outline', title: 'Ma soutenance', screen: 'student-defense', locked: !convocationReady },
+    { icon: 'document-text-outline', title: 'Ma convocation', screen: 'student-convocation', locked: !convocationReady },
+    { icon: 'book-outline', title: 'Mon sujet de thèse', screen: 'student-thesis' },
+    { icon: 'stats-chart-outline', title: 'Mon résultat', screen: 'student-result', locked: true },
+    { icon: 'create-outline', title: 'PV de soutenance', screen: 'student-pv', locked: true },
+    { icon: 'notifications-outline', title: 'Notifications', screen: 'student-notifications', locked: true },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
-      <TopBar title="EMIT" showBackButton onBackPress={onExit} showNotification={convocationReady} onNotificationPress={() => onNavigate('student-notifications')} />
+      <TopBar title="EMIT" showBackButton onBackPress={onExit} showNotification={false} />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.studentName}>{student.name}</Text>
-              <Text style={styles.studentMatricule}>{student.matricule}</Text>
+            <View style={styles.greetingBlock}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{student.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</Text>
+              </View>
+              <View>
+                <Text style={styles.greeting}>Bonjour,</Text>
+                <Text style={styles.studentName}>{student.name}</Text>
+                <Text style={styles.studentMatricule}>Matricule: {student.matricule}</Text>
+              </View>
             </View>
-            <View style={styles.defenseBadge}>
-              <Text style={styles.defenseBadgeText}>{convocationReady ? 'Convocation disponible' : 'En attente de convocation'}</Text>
+            <View style={styles.headerActions}>
+              <Pressable style={({ pressed }) => [styles.headerAction, pressed && { opacity: 0.8 }]}>
+                <Ionicons name="search-outline" size={20} color="#0D1F4E" />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.headerAction, pressed && { opacity: 0.8 }]}
+                onPress={() => onNavigate('student-notifications')}
+              >
+                <Ionicons name="notifications-outline" size={20} color="#0D1F4E" />
+                {convocationReady && <View style={styles.unreadBadge} />}
+              </Pressable>
             </View>
+          </View>
+          <Text style={styles.pageHeading}>Suivi de Soutenance & Mémoire</Text>
+        </View>
+
+        <View style={styles.statsBanner}>
+          <View style={styles.statItem}>
+            <Ionicons name="document-text-outline" size={22} color="#FFFFFF" />
+            <Text style={styles.statLabel}>Dépôt</Text>
+            <Text style={styles.statValue}>En cours</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Ionicons name="checkmark-circle-outline" size={22} color="#FFFFFF" />
+            <Text style={styles.statLabel}>Avis encadreur</Text>
+            <Text style={styles.statValue}>{themeSubmitted ? 'Validé' : 'En attente'}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Ionicons name="time-outline" size={22} color="#FFFFFF" />
+            <Text style={styles.statLabel}>Jours restants</Text>
+            <Text style={styles.statValue}>14 jours</Text>
           </View>
         </View>
 
-        {/* Defense Info Card */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+          {[
+            ['Tous', 'apps-outline'],
+            ['Mon mémoire', 'book-outline'],
+            ['Mon jury', 'people-outline'],
+            ['Soutenance', 'calendar-outline'],
+            ['Documents', 'document-text-outline'],
+          ].map(([filter, icon], index) => (
+            <View key={filter} style={[styles.filterChip, index === 0 && styles.filterChipActive]}>
+              <Ionicons name={icon as React.ComponentProps<typeof Ionicons>['name']} size={15} color={index === 0 ? '#0D1F4E' : '#637799'} />
+              <Text style={[styles.filterText, index === 0 && styles.filterTextActive]}>{filter}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.modulesHeader}>
+          <View style={styles.modulesTitleRow}>
+            <Text style={styles.modulesTitle}>Modules & Services</Text>
+            <View style={styles.countBadge}><Text style={styles.countBadgeText}>4</Text></View>
+          </View>
+          <Pressable style={({ pressed }) => [styles.submitAction, pressed && { opacity: 0.8 }]} onPress={onOpenTheme}>
+            <Ionicons name="add" size={18} color="#2D84E0" />
+            <Text style={styles.submitActionText}>Soumettre fichier</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.servicesGrid}>
+          <View style={styles.serviceCard}>
+            <View style={styles.serviceTopRow}>
+              <View style={styles.serviceIcon}><Ionicons name="book-outline" size={22} color="#2D84E0" /></View>
+              <Ionicons name={themeSubmitted ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={themeSubmitted ? '#2D84E0' : '#637799'} />
+            </View>
+            <Text style={styles.serviceTitle}>Sujet de thèse</Text>
+            <Text style={styles.serviceSubtitle}>{themeSubmitted ? 'Dernière version validée' : 'À renseigner'}</Text>
+            <View style={styles.serviceBottomRow}>
+              <Text style={styles.serviceStatusText}>{themeSubmitted ? 'Validé' : 'En attente'}</Text>
+              <View style={styles.serviceStatus}><Ionicons name={themeSubmitted ? 'checkmark' : 'time-outline'} size={13} color="#1A4BA8" /></View>
+            </View>
+          </View>
+          <View style={styles.serviceCard}>
+            <View style={styles.serviceTopRow}>
+              <View style={styles.serviceIcon}><Ionicons name="person-outline" size={22} color="#2D84E0" /></View>
+              <Ionicons name="checkmark-circle" size={18} color="#2D84E0" />
+            </View>
+            <Text style={styles.serviceTitle}>Prof. Encadreur</Text>
+            <Text style={styles.serviceSubtitle}>3 RDV validés</Text>
+            <View style={styles.serviceBottomRow}>
+              <Pressable style={({ pressed }) => [styles.serviceLink, pressed && { opacity: 0.8 }]}><Text style={styles.serviceLinkText}>Contacter</Text></Pressable>
+            </View>
+          </View>
+          <Pressable style={({ pressed }) => [styles.serviceCard, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-defense')}>
+            <View style={styles.serviceTopRow}>
+              <View style={styles.serviceIcon}><Ionicons name="calendar-outline" size={22} color="#2D84E0" /></View>
+              <Ionicons name="chevron-forward-circle-outline" size={18} color="#2D84E0" />
+            </View>
+            <Text style={styles.serviceTitle}>Jury assigné</Text>
+            <Text style={styles.serviceSubtitle}>{convocationReady ? 'Salle C12 - 10h00' : 'En attente'}</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.alertServiceCard, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-convocation')}>
+            <View style={styles.serviceTopRow}>
+              <View style={styles.alertIcon}><Ionicons name="warning-outline" size={22} color="#EF4444" /></View>
+              <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+            </View>
+            <Text style={styles.serviceTitle}>Convocation</Text>
+            <Text style={styles.alertSubtitle}>{convocationReady ? 'Disponible' : 'Action requise'}</Text>
+          </Pressable>
+        </View>
+
+        {/* Existing detailed status and shortcuts */}
+        <View style={styles.legacySection}>
+          <Text style={styles.sectionTitle}>Détails de soutenance</Text>
+          <View style={styles.defenseBadge}>
+            <Text style={styles.defenseBadgeText}>{convocationReady ? 'Convocation disponible' : 'En attente de convocation'}</Text>
+          </View>
+          </View>
         <View style={styles.defenseCard}>
           <View style={styles.defenseInfoRow}>
             <View style={styles.defenseInfoItem}>
@@ -92,6 +211,13 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSub
               </View>
             </View>
           </View>
+          <Pressable
+            style={({ pressed }) => [styles.convocationButton, pressed && { opacity: 0.8 }]}
+            onPress={() => onNavigate('student-convocation')}
+          >
+            <Text style={styles.convocationButtonText}>Voir ma convocation</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          </Pressable>
         </View>
 
         <View style={styles.profileCard}>
@@ -105,34 +231,36 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSub
         <View style={styles.themeCard}>
           <Text style={styles.cardTitle}>{themeSubmitted ? 'Thème validé' : 'Action requise'}</Text>
           <Text style={styles.themeDescription}>{themeSubmitted ? 'Votre thème est validé. La convocation sera disponible dans quelques instants.' : 'Vous devez renseigner votre thème de stage ou mémoire.'}</Text>
-          {!themeSubmitted ? <TouchableOpacity style={styles.themeButton} onPress={onOpenTheme}><Text style={styles.themeButtonText}>Renseigner mon thème</Text></TouchableOpacity> : null}
+          {!themeSubmitted ? <Pressable style={({ pressed }) => [styles.themeButton, pressed && { opacity: 0.8 }]} onPress={onOpenTheme}><Text style={styles.themeButtonText}>Renseigner mon thème</Text></Pressable> : null}
         </View>
 
         {/* Notification Banner (if needed) */}
         {/* <View style={styles.notificationBanner}>
-          <Text style={styles.notificationBannerText}>⚠️ Votre soutenance a été reprogrammée</Text>
+          <View style={styles.notificationBannerContent}>
+            <Ionicons name="warning-outline" size={18} color="#92400E" />
+            <Text style={styles.notificationBannerText}>Votre soutenance a été reprogrammée</Text>
+          </View>
         </View> */}
 
         {/* Shortcuts */}
         <View style={styles.shortcutsSection}>
-          <Text style={styles.sectionTitle}>Raccourcis</Text>
+          <Text style={styles.sectionTitle}>Accès rapides</Text>
           <View style={styles.shortcutsGrid}>
             {shortcuts.map((shortcut) => (
-              <ShortcutCard key={shortcut.screen} {...shortcut} onPress={() => { if (!shortcut.locked) onNavigate(shortcut.screen); }} />
+              <ShortcutCard
+                key={shortcut.screen}
+                {...shortcut}
+                onPress={() => onNavigate(shortcut.screen)}
+              />
             ))}
           </View>
         </View>
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
+        items={studentTabItems}
         activeTab="home"
-        onTabChange={(tab) => onNavigate(tab === 'defense' ? 'student-defense' : tab === 'thesis' ? 'student-thesis' : 'student-profile')}
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -157,6 +285,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  greetingBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatar: {
+    alignItems: 'center',
+    backgroundColor: '#2D84E0',
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 48,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  greeting: {
+    color: '#DDEAF7',
+    fontSize: 12,
+    marginBottom: 2,
+  },
   studentName: {
     fontSize: 20,
     fontWeight: '700',
@@ -169,11 +321,233 @@ const styles = StyleSheet.create({
     color: '#2D84E0',
     fontFamily: 'Inter-Regular',
   },
+  pageHeading: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 24,
+    fontFamily: 'PlusJakartaSans-Bold',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerAction: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 40,
+  },
+  unreadBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 4,
+    height: 8,
+    position: 'absolute',
+    right: 7,
+    top: 7,
+    width: 8,
+  },
+  statsBanner: {
+    backgroundColor: '#1A4BA8',
+    borderRadius: 14,
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    backgroundColor: '#FFFFFF55',
+    height: '100%',
+    width: 1,
+  },
+  statLabel: {
+    color: '#DDEAF7',
+    fontSize: 11,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  statValue: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  filters: {
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  filterChip: {
+    alignItems: 'center',
+    borderColor: '#DDEAF7',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  filterChipActive: {
+    backgroundColor: '#EAF4FF',
+    borderColor: '#2D84E0',
+  },
+  filterText: {
+    color: '#637799',
+    fontSize: 12,
+  },
+  filterTextActive: {
+    color: '#0D1F4E',
+    fontWeight: '700',
+  },
+  modulesHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginBottom: 14,
+  },
+  modulesTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  modulesTitle: {
+    color: '#0D1F4E',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  countBadge: {
+    alignItems: 'center',
+    backgroundColor: '#2D84E0',
+    borderRadius: 12,
+    height: 24,
+    justifyContent: 'center',
+    marginLeft: 8,
+    width: 24,
+  },
+  countBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  submitAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  submitActionText: {
+    color: '#2D84E0',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 3,
+  },
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginHorizontal: 20,
+  },
+  serviceCard: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#DDEAF7',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    width: '48%',
+    boxShadow: '0px 2px 8px rgba(13,31,78,0.06)',
+    elevation: 2,
+  },
+  alertServiceCard: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    width: '48%',
+  },
+  serviceIcon: {
+    alignItems: 'center',
+    backgroundColor: '#EAF4FF',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    marginBottom: 12,
+    width: 40,
+  },
+  serviceTopRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 40,
+  },
+  alertIcon: {
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    marginBottom: 12,
+    width: 40,
+  },
+  serviceTitle: {
+    color: '#0D1F4E',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  serviceSubtitle: {
+    color: '#637799',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  alertSubtitle: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+  serviceStatus: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EAF4FF',
+    borderRadius: 8,
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  serviceBottomRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    minHeight: 24,
+  },
+  serviceStatusText: {
+    color: '#1A4BA8',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+  serviceLink: {
+    marginTop: 12,
+  },
+  serviceLinkText: {
+    color: '#2D84E0',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  legacySection: {
+    marginTop: 24,
+    marginHorizontal: 20,
+  },
   defenseBadge: {
     backgroundColor: '#2D84E0',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 8,
   },
   defenseBadgeText: {
     fontSize: 12,
@@ -185,25 +559,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginTop: -24,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.06)',
+    elevation: 4,
   },
   profileCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderColor: '#DDEAF7',
+    borderWidth: 1,
+    borderRadius: 14,
     marginHorizontal: 20,
     marginTop: 16,
     padding: 20,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
+    elevation: 4,
   },
   themeCard: {
     backgroundColor: '#FFF8E8',
     borderColor: '#F2D18A',
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
     marginHorizontal: 20,
     marginTop: 16,
@@ -239,7 +616,7 @@ const styles = StyleSheet.create({
   themeButton: {
     alignItems: 'center',
     backgroundColor: '#E5B45F',
-    borderRadius: 10,
+    borderRadius: 12,
     marginTop: 14,
     paddingVertical: 12,
   },
@@ -252,6 +629,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  convocationButton: {
+    alignItems: 'center',
+    backgroundColor: '#2D84E0',
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 2,
+    paddingVertical: 12,
+  },
+  convocationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginRight: 8,
   },
   defenseInfoItem: {
     flex: 1,
@@ -272,7 +664,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF4FF',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   statusBadgeText: {
@@ -286,7 +678,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#F59E0B',
   },
@@ -294,6 +686,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#92400E',
     fontFamily: 'Inter-Regular',
+  },
+  notificationBannerContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   shortcutsSection: {
     paddingHorizontal: 20,
@@ -315,13 +712,12 @@ const styles = StyleSheet.create({
   shortcutCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   shortcutCardLocked: {

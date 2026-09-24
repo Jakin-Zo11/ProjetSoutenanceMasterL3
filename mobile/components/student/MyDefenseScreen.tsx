@@ -5,11 +5,12 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { Ionicons } from '@expo/vector-icons';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
 interface JuryMemberProps {
   name: string;
@@ -31,9 +32,9 @@ const JuryMember: React.FC<JuryMemberProps> = ({ name, role, isNew }) => (
   </View>
 );
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
-const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack }) => {
+const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
   const defenseData = {
     isReprogrammed: true,
     oldDate: '15 Déc 2024',
@@ -59,14 +60,17 @@ const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack }) => {
         {/* Reprogrammed Banner */}
         {defenseData.isReprogrammed && (
           <View style={styles.reprogrammedBanner}>
-            <Text style={styles.reprogrammedBannerTitle}>⚠️ Reprogrammée</Text>
+            <View style={styles.reprogrammedTitleRow}>
+              <Ionicons name="warning-outline" size={18} color="#92400E" />
+              <Text style={styles.reprogrammedBannerTitle}>Reprogrammée</Text>
+            </View>
             <View style={styles.reprogrammedInfo}>
               <View style={styles.reprogrammedItem}>
                 <Text style={styles.reprogrammedLabel}>Ancien créneau</Text>
                 <Text style={styles.reprogrammedValue}>{defenseData.oldDate} à {defenseData.oldTime}</Text>
                 <Text style={styles.reprogrammedRoom}>{defenseData.oldRoom}</Text>
               </View>
-              <Text style={styles.arrow}>→</Text>
+              <Ionicons name="arrow-forward" size={20} color="#F59E0B" />
               <View style={styles.reprogrammedItem}>
                 <Text style={styles.reprogrammedLabel}>Nouveau créneau</Text>
                 <Text style={styles.reprogrammedValue}>{defenseData.newDate} à {defenseData.newTime}</Text>
@@ -114,14 +118,9 @@ const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack }) => {
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
+        items={studentTabItems}
         activeTab="defense"
-        onTabChange={() => {}}
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -140,7 +139,7 @@ const styles = StyleSheet.create({
     margin: 20,
     marginTop: 20,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: '#F59E0B',
   },
@@ -176,21 +175,20 @@ const styles = StyleSheet.create({
     color: '#B45309',
     fontFamily: 'Inter-Regular',
   },
-  arrow: {
-    fontSize: 20,
-    color: '#F59E0B',
-    marginHorizontal: 12,
+  reprogrammedTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   defenseCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginTop: 16,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   juryCard: {
@@ -198,12 +196,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   cardTitle: {
@@ -260,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2D84E0',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   newBadgeText: {
     fontSize: 12,

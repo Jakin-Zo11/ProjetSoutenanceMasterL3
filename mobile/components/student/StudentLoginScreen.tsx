@@ -5,10 +5,11 @@ import {
   StyleSheet,
   SafeAreaView,
   TextInput,
-  TouchableOpacity,
   Image,
   StatusBar,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 export interface StudentProfile {
   name: string;
   matricule: string;
@@ -70,9 +71,9 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
       <View style={styles.content}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton} accessibilityLabel="Retour">
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
+        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]} accessibilityLabel="Retour">
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </Pressable>
         {/* Logo EMIT */}
         <View style={styles.logoContainer}>
           <Image
@@ -101,9 +102,9 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
           </View>
 
           {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
-          <TouchableOpacity onPress={handleLogin} disabled={isLoading} style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}>
+          <Pressable onPress={handleLogin} disabled={isLoading} style={({ pressed }) => [styles.loginButton, isLoading && styles.loginButtonDisabled, pressed && { opacity: 0.8 }]}>
             <Text style={styles.loginButtonText}>{isLoading ? 'Recherche...' : 'Voir mon espace'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </SafeAreaView>
@@ -132,10 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
     elevation: 8,
   },
   formTitle: {
@@ -208,10 +206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#1A4BA8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(26,75,168,0.3)',
     elevation: 4,
   },
   loginButtonText: {

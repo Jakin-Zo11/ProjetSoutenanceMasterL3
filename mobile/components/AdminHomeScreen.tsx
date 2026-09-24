@@ -9,16 +9,18 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
 
 interface StatCardProps {
   title: string;
   value: string;
-  icon: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
   color: string;
 }
 
 interface ActivityItemProps {
-  icon: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
   title: string;
   time: string;
   color: string;
@@ -27,7 +29,7 @@ interface ActivityItemProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
   <View style={[styles.statCard, { borderLeftColor: color }]}>
     <View style={styles.statIconContainer}>
-      <Text style={styles.statIcon}>{icon}</Text>
+      <Ionicons name={icon} size={24} color="#1A4BA8" />
     </View>
     <View style={styles.statContent}>
       <Text style={styles.statValue}>{value}</Text>
@@ -39,7 +41,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
 const ActivityItem: React.FC<ActivityItemProps> = ({ icon, title, time, color }) => (
   <View style={styles.activityItem}>
     <View style={[styles.activityDot, { backgroundColor: color }]}>
-      <Text style={styles.activityIcon}>{icon}</Text>
+      <Ionicons name={icon} size={18} color="#FFFFFF" />
     </View>
     <View style={styles.activityContent}>
       <Text style={styles.activityTitle}>{title}</Text>
@@ -50,16 +52,16 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ icon, title, time, color })
 
 const AdminHomeScreen: React.FC = () => {
   const [stats] = useState([
-    { title: 'Étudiants', value: '128', icon: '🎓', color: '#95C5F2' },
-    { title: 'Enseignants', value: '34', icon: '👨‍🏫', color: '#95C5F2' },
-    { title: 'Soutenances', value: '42', icon: '📅', color: '#95C5F2' },
-    { title: 'PV Générés', value: '18', icon: '📄', color: '#95C5F2' },
+    { title: 'Étudiants', value: '128', icon: 'school-outline', color: '#95C5F2' },
+    { title: 'Enseignants', value: '34', icon: 'people-outline', color: '#95C5F2' },
+    { title: 'Soutenances', value: '42', icon: 'calendar-outline', color: '#95C5F2' },
+    { title: 'PV Générés', value: '18', icon: 'document-text-outline', color: '#95C5F2' },
   ]);
 
   const [activities] = useState([
-    { icon: '✅', title: 'Validation dépôt mémoire - Rakoto Jean', time: 'Il y a 5 min', color: '#10B981' },
-    { icon: '📝', title: 'Affectation jury - Soutenance #42', time: 'Il y a 15 min', color: '#95C5F2' },
-    { icon: '🔔', title: 'Envoi convocation - Étudiant #128', time: 'Il y a 1 heure', color: '#F59E0B' },
+    { icon: 'checkmark-circle-outline', title: 'Validation dépôt mémoire - Rakoto Jean', time: 'Il y a 5 min', color: '#10B981' },
+    { icon: 'create-outline', title: 'Affectation jury - Soutenance #42', time: 'Il y a 15 min', color: '#95C5F2' },
+    { icon: 'notifications-outline', title: 'Envoi convocation - Étudiant #128', time: 'Il y a 1 heure', color: '#F59E0B' },
   ]);
 
   return (
@@ -184,10 +186,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.3)',
     elevation: 8,
   },
   avatarInitial: {
@@ -210,10 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
     elevation: 4,
   },
   statIconContainer: {
@@ -249,10 +245,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 2,
     borderColor: '#95C5F2',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
     elevation: 4,
   },
   statusHeader: {
@@ -315,10 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
     elevation: 4,
   },
   activityItem: {

@@ -11,6 +11,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -62,7 +63,7 @@ const LoginScreen = ({ navigation }: any) => {
               
               <Text style={styles.title}>Espace Soutenances</Text>
               <Text style={styles.subtitle}>
-                École de Management et d'Innovation Technologique
+                École de Management et d’Innovation Technologique
               </Text>
             </View>
 
@@ -103,7 +104,7 @@ const LoginScreen = ({ navigation }: any) => {
                     style={styles.eyeButton}
                   >
                     <Text style={styles.eyeText}>
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                      <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#64748B" />
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -116,7 +117,7 @@ const LoginScreen = ({ navigation }: any) => {
                   style={styles.checkboxContainer}
                 >
                   <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                    {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+                    {rememberMe && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
                   </View>
                   <Text style={styles.checkboxLabel}>Se souvenir de moi</Text>
                 </TouchableOpacity>
@@ -182,10 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.3)',
     elevation: 8,
   },
   logoText: {
@@ -210,10 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
+    boxShadow: '0px 8px 16px rgba(0,0,0,0.25)',
     elevation: 12,
   },
   formTitle: {
@@ -295,10 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#050840',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(5,8,64,0.3)',
     elevation: 4,
   },
   loginButtonDisabled: {

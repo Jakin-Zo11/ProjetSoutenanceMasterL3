@@ -53,7 +53,7 @@ const AffectationJuryPage: React.FC = () => {
             Règle d'affectation
           </p>
           <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Exactement 3 membres par jury (Président, Rapporteur, Examinateur). Pas de doublon sur le même créneau.
+            3 membres minimum par jury (Président, Rapporteur, Examinateur). Des membres supplémentaires peuvent être ajoutés sans doublon sur le même créneau.
           </p>
         </div>
       </div>

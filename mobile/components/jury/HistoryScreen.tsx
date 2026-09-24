@@ -1,4 +1,5 @@
 import React from 'react';
+import { Colors } from '../../constants/theme';
 import {
   View,
   Text,
@@ -9,21 +10,23 @@ import {
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { juryTabItems, juryTabBadges, JURY_ACCENT_RED } from './juryNavigation';
 
 interface HistoryItemProps {
   studentName: string;
   date: string;
   role: string;
   grade: string;
+  mention: string;
   status: string;
 }
 
-const HistoryItem: React.FC<HistoryItemProps> = ({ studentName, date, role, grade, status }) => {
+const HistoryItem: React.FC<HistoryItemProps> = ({ studentName, date, role, grade, mention, status }) => {
   const getStatusColor = () => {
     switch (status) {
-      case 'Soumis': return '#10B981';
-      case 'Archivé': return '#6B7280';
-      default: return '#6B7280';
+      case 'Soumis': return Colors.light.success;
+      case 'Archivé': return Colors.light.tabIconDefault;
+      default: return Colors.light.tabIconDefault;
     }
   };
 
@@ -38,6 +41,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ studentName, date, role, grad
       </View>
       <View style={styles.historyGrades}>
         <Text style={styles.historyGrade}>{grade}</Text>
+        <Text style={styles.historyMention}>{mention}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
           <Text style={styles.statusBadgeText}>{status}</Text>
         </View>
@@ -46,50 +50,60 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ studentName, date, role, grad
   );
 };
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps {
+  onBack: () => void;
+  onNavigate: (screen: string) => void;
+  evaluatedEvaluations?: Record<string, { studentName: string; date: string; average: number; mention: string; evaluee: true }>;
+}
 
-const HistoryScreen: React.FC<ScreenProps> = ({ onBack }) => {
+const HistoryScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, evaluatedEvaluations = {} }) => {
+  // Données locales (Mock Data) — fiches d'évaluation avec notes saisies,
+  // moyennes calculées et mentions. Aucun appel API / serveur externe.
+  const getMentionLabel = (average: number) => {
+    if (average >= 16) return 'Très Bien';
+    if (average >= 14) return 'Bien';
+    if (average >= 10) return 'Assez Bien';
+    return 'Ajourné / Rattrapage';
+  };
+  const evaluatedHistory = Object.entries(evaluatedEvaluations).map(([studentId, evaluation]) => ({
+    studentName: evaluation.studentName || studentId,
+    date: evaluation.date,
+    role: 'Évaluateur',
+    grade: `${evaluation.average.toFixed(1)}/20`,
+    mention: evaluation.mention || getMentionLabel(evaluation.average),
+    status: 'Terminée',
+  }));
   const historyData = [
+    ...evaluatedHistory,
     {
-      studentName: 'Rasolofomanana Luc',
-      date: '18 Déc 2024',
-      role: 'Président',
-      grade: '16.5/20',
-      status: 'Soumis',
-    },
-    {
-      studentName: 'Ravelonarivo Fara',
-      date: '17 Déc 2024',
-      role: 'Rapporteur',
-      grade: '15.0/20',
-      status: 'Soumis',
-    },
-    {
-      studentName: 'Rakotoson Jean',
-      date: '15 Déc 2024',
+      studentName: 'Jean Dupont',
+      date: '16 Déc 2024',
       role: 'Examinateur',
-      grade: '14.5/20',
-      status: 'Archivé',
+      grade: '16.5/20',
+      mention: 'Très Bien',
+      status: 'Soumis',
     },
     {
-      studentName: 'Rasoa Marie',
-      date: '10 Déc 2024',
+      studentName: 'Alice Martin',
+      date: '15 Déc 2024',
       role: 'Président',
-      grade: '17.0/20',
-      status: 'Archivé',
+      grade: '15.5/20',
+      mention: 'Bien',
+      status: 'Soumis',
     },
     {
-      studentName: 'Andriamanitra Paul',
-      date: '08 Déc 2024',
+      studentName: 'Pierre Leroy',
+      date: '15 Déc 2024',
       role: 'Rapporteur',
-      grade: '16.0/20',
+      grade: '13.5/20',
+      mention: 'Assez Bien',
       status: 'Archivé',
     },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.light.navy} />
       <TopBar title="Historique" showBackButton onBackPress={onBack} showNotification />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -101,13 +115,15 @@ const HistoryScreen: React.FC<ScreenProps> = ({ onBack }) => {
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'students', icon: '🎓', label: 'Étudiants' },
-          { id: 'history', icon: '📋', label: 'Historique' },
-        ]}
-        activeTab="history"
-        onTabChange={() => {}}
+        items={juryTabItems}
+        activeTab="evaluations"
+        badges={juryTabBadges}
+        accentColor={JURY_ACCENT_RED}
+        onTabChange={(tab) => {
+          if (tab === 'home') onBack();
+          if (tab === 'defenses') onNavigate('jury-students');
+          if (tab === 'profile') onNavigate('jury-profile');
+        }}
       />
     </SafeAreaView>
   );
@@ -116,7 +132,7 @@ const HistoryScreen: React.FC<ScreenProps> = ({ onBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
   },
   scrollView: {
     flex: 1,
@@ -129,13 +145,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.white,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   historyInfo: {
@@ -144,7 +157,7 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     marginBottom: 4,
     fontFamily: 'Inter-SemiBold',
   },
@@ -154,12 +167,12 @@ const styles = StyleSheet.create({
   },
   historyRole: {
     fontSize: 12,
-    color: '#1A4BA8',
+    color: Colors.light.primary,
     fontFamily: 'Inter-SemiBold',
   },
   historyDate: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.light.tabIconDefault,
     fontFamily: 'Inter-Regular',
   },
   historyGrades: {
@@ -168,9 +181,15 @@ const styles = StyleSheet.create({
   historyGrade: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0D1F4E',
-    marginBottom: 4,
+    color: Colors.light.navy,
+    marginBottom: 2,
     fontFamily: 'JetBrainsMono-Bold',
+  },
+  historyMention: {
+    fontSize: 11,
+    color: Colors.light.primary,
+    marginBottom: 6,
+    fontFamily: 'Inter-SemiBold',
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -180,7 +199,7 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.light.white,
     fontFamily: 'Inter-SemiBold',
   },
 });

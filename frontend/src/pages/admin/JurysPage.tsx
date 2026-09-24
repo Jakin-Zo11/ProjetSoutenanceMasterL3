@@ -62,7 +62,7 @@ const JurysPage: React.FC = () => {
             Règle importante
           </p>
           <p className="text-sm text-[#92400E]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            3 membres obligatoires par jury (Président, Rapporteur, Examinateur)
+            3 membres minimum par jury (Président, Rapporteur, Examinateur)
           </p>
         </div>
       </div>

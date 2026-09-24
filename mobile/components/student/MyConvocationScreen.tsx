@@ -5,15 +5,17 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Image,
+  Pressable,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
-const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack }) => {
+const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
   const convocationData = {
     studentName: 'Rakoto Jean',
     matricule: 'MAT-2024-001',
@@ -35,8 +37,12 @@ const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack }) => {
         <View style={styles.convocationCard}>
           {/* Header */}
           <View style={styles.convocationHeader}>
-            <Text style={styles.emitTitle}>EMIT</Text>
-            <Text style={styles.emitSubtitle}>École de Management et d'Innovation Technologique</Text>
+            <Image
+              source={require('../../assets/images/Logo-emit.png')}
+              style={styles.emitLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.emitSubtitle}>École de Management et d’Innovation Technologique</Text>
             <Text style={styles.emitLocation}>Fianarantsoa, Madagascar</Text>
           </View>
 
@@ -44,8 +50,8 @@ const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack }) => {
 
           {/* Document Title */}
           <View style={styles.documentTitleSection}>
-            <Text style={styles.documentTitle}>CONVocation</Text>
-            <Text style={styles.documentSubtitle}>Soutenance de mémoire de fin d'études</Text>
+            <Text style={styles.documentTitle}>CONVOCATION</Text>
+            <Text style={styles.documentSubtitle}>Soutenance de mémoire de fin d’études</Text>
           </View>
 
           <View style={styles.divider} />
@@ -111,24 +117,19 @@ const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack }) => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.primaryButton}>
+          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}>
             <Text style={styles.primaryButtonText}>📥 Télécharger PDF</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton}>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.8 }]}>
             <Text style={styles.secondaryButtonText}>📤 Partager</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
+        items={studentTabItems}
         activeTab="defense"
-        onTabChange={() => {}}
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -146,24 +147,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     margin: 20,
     marginTop: 20,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.06)',
+    elevation: 4,
   },
   convocationHeader: {
     alignItems: 'center',
     marginBottom: 16,
   },
-  emitTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0D1F4E',
-    fontFamily: 'PlusJakartaSans-ExtraBold',
+  emitLogo: {
+    height: 40,
     marginBottom: 4,
+    width: 120,
   },
   emitSubtitle: {
     fontSize: 14,
@@ -300,10 +298,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#1A4BA8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(26,75,168,0.3)',
     elevation: 4,
   },
   primaryButtonText: {

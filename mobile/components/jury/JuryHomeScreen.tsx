@@ -1,157 +1,260 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
+  RefreshControl,
+  Image,
   StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
-
-interface EvaluationItemProps {
-  studentName: string;
-  studentMatricule: string;
-  role: string;
-  date: string;
-  room: string;
-  status: string;
-}
+import { Colors, Fonts } from '../../constants/theme';
+import { juryTabItems, juryTabBadges, JURY_ACCENT_RED } from './juryNavigation';
+import type { SoutenanceJury, SoutenanceStatut, StatsJury } from '../../types/jury';
 
 interface JuryHomeScreenProps {
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: string, params?: SoutenanceJury) => void;
   onExit: () => void;
 }
+// Données locales (Mock Data) — 3 soutenances, aucun appel API / serveur externe.
+const defenses: SoutenanceJury[] = [
+  {
+    id: 'SOUT-2024-001',
+    etudiantNom: 'Alice Martin',
+    theme: 'Plateforme web de gestion des soutenances à l’EMIT',
+    date: '15 Décembre',
+    heure: '09:00',
+    salle: 'Salle A-101',
+    statut: 'en_cours',
+  },
+  {
+    id: 'SOUT-2024-002',
+    etudiantNom: 'Pierre Leroy',
+    theme: 'Application mobile de suivi académique des étudiants',
+    date: '15 Décembre',
+    heure: '11:30',
+    salle: 'Salle B-205',
+    statut: 'evaluation_en_attente',
+  },
+  {
+    id: 'SOUT-2024-003',
+    etudiantNom: 'Jean Dupont',
+    theme: 'Système d’information pour la scolarité EMIT',
+    date: '16 Décembre',
+    heure: '14:00',
+    salle: 'Salle C-305',
+    statut: 'a_venir',
+  },
+];
 
-const EvaluationItem: React.FC<EvaluationItemProps & { onPress: () => void }> = ({ studentName, studentMatricule, role, date, room, status, onPress }) => {
-  const getStatusColor = () => {
-    switch (status) {
-      case 'À évaluer': return '#EAF4FF';
-      case 'Évalué': return '#0D1F4E';
-      default: return '#EAF4FF';
-    }
-  };
+const statusStyles: Record<SoutenanceStatut, {
+  label: string;
+  backgroundColor: string;
+  color: string;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
+}> = {
+  en_cours: { label: 'En cours', backgroundColor: Colors.light.sky, color: Colors.light.background },
+  // Action urgente du jury : badge rouge clair / texte rouge (#EF4444).
+  evaluation_en_attente: { label: 'Évaluation en attente', backgroundColor: '#FEE2E2', color: JURY_ACCENT_RED },
+  a_venir: { label: 'À venir', backgroundColor: Colors.light.surface, color: Colors.light.icon },
+  evaluation_terminee: { label: 'Évaluation terminée', backgroundColor: Colors.light.primary, color: Colors.light.background, icon: 'checkmark-outline' },
+};
 
-  const getStatusTextColor = () => {
-    switch (status) {
-      case 'À évaluer': return '#1A4BA8';
-      case 'Évalué': return '#FFFFFF';
-      default: return '#1A4BA8';
-    }
-  };
+type DefenseFilter = 'all' | 'today' | 'upcoming' | 'pending' | 'completed';
+
+const StatCard = ({
+  icon,
+  label,
+  value,
+  onPress,
+  active,
+  urgent,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: number;
+  onPress: () => void;
+  active: boolean;
+  urgent?: boolean;
+}) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [styles.statCard, active && styles.statCardActive, urgent && styles.statCardUrgent, pressed && { opacity: 0.8 }]}
+  >
+    <View style={[styles.statIcon, urgent && styles.statIconUrgent]}>
+      <Ionicons name={icon} size={20} color={urgent ? JURY_ACCENT_RED : Colors.light.tint} />
+    </View>
+    <Text style={[styles.statValue, urgent && styles.statValueUrgent]}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </Pressable>
+);
+
+const DefenseCard = ({ defense, onPress }: { defense: SoutenanceJury; onPress: () => void }) => {
+  const status = statusStyles[defense.statut];
 
   return (
-    <TouchableOpacity style={styles.evaluationItem} onPress={onPress}>
-      <View style={styles.evaluationAvatar}>
-        <Text style={styles.evaluationAvatarText}>{studentName.charAt(0)}</Text>
-      </View>
-      <View style={styles.evaluationInfo}>
-        <Text style={styles.evaluationStudentName}>{studentName}</Text>
-        <Text style={styles.evaluationMatricule}>{studentMatricule}</Text>
-        <View style={styles.evaluationMeta}>
-          <Text style={styles.evaluationRole}>{role}</Text>
-          <Text style={styles.evaluationDate}>{date}</Text>
-          <Text style={styles.evaluationRoom}>{room}</Text>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.defenseCard, pressed && { opacity: 0.8 }]}>
+      <View style={styles.defenseHeader}>
+        <View style={styles.defenseStudent}>
+          <Text style={styles.fieldLabel}>Nom de l’étudiant</Text>
+          <Text style={styles.studentName}>{defense.etudiantNom}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: status.backgroundColor }]}>
+          {status.icon && <Ionicons name={status.icon} size={13} color={status.color} />}
+          <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
         </View>
       </View>
-      <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
-        <Text style={[styles.statusBadgeText, { color: getStatusTextColor() }]}>{status}</Text>
+
+      <Text style={styles.fieldLabel}>Thème du mémoire</Text>
+      <Text style={styles.thesisTitle}>{defense.theme}</Text>
+
+      <View style={styles.logistics}>
+        <View>
+          <Text style={styles.fieldLabel}>Date</Text>
+          <Text style={styles.logisticsValue}>{defense.date}</Text>
+        </View>
+        <View>
+          <Text style={styles.fieldLabel}>Heure</Text>
+          <Text style={styles.logisticsValue}>{defense.heure}</Text>
+        </View>
+        <View>
+          <Text style={styles.fieldLabel}>Salle</Text>
+          <Text style={styles.logisticsValue}>{defense.salle}</Text>
+        </View>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit }) => {
-  const juryData = {
-    name: 'Prof. Randriamanana',
-    grade: 'Maître de Conférences',
-    establishment: 'EMIT Fianarantsoa',
-    stats: {
-      assigned: 8,
-      toEvaluate: 3,
-      completed: 5,
-    },
+  const [filter, setFilter] = useState<DefenseFilter>('all');
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  // Statistiques locales (Mock Data) : valeurs dérivées de la liste,
+  // backlog d'évaluations en attente = 8 (chiffre prioritaire du jury).
+  const stats: StatsJury = {
+    soutenancesAujourdhui: defenses.filter((item) => item.date === '15 Décembre').length,
+    soutenancesAVenir: defenses.filter((item) => item.statut === 'a_venir').length,
+    evaluationsEnAttente: 8,
+    evaluationsTerminees: defenses.filter((item) => item.statut === 'evaluation_terminee').length,
   };
 
-  const upcomingEvaluations = [
-    {
-      studentName: 'Rakoto Jean',
-      studentMatricule: 'MAT-2024-001',
-      role: 'Président',
-      date: '20 Déc 2024',
-      room: 'Salle A101',
-      status: 'À évaluer',
-    },
-    {
-      studentName: 'Rasoa Marie',
-      studentMatricule: 'MAT-2024-002',
-      role: 'Rapporteur',
-      date: '21 Déc 2024',
-      room: 'Salle B203',
-      status: 'À évaluer',
-    },
-    {
-      studentName: 'Andriamanitra Paul',
-      studentMatricule: 'MAT-2024-003',
-      role: 'Examinateur',
-      date: '22 Déc 2024',
-      room: 'Salle C305',
-      status: 'À évaluer',
-    },
-  ];
+  const filteredDefenses = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return defenses.filter((defense) => {
+      const matchesSearch = !normalizedSearch
+        || defense.etudiantNom.toLowerCase().includes(normalizedSearch)
+        || defense.salle.toLowerCase().includes(normalizedSearch);
+      const matchesFilter =
+        filter === 'all'
+        || (filter === 'today' && defense.date === '15 Décembre')
+        || (filter === 'upcoming' && defense.statut === 'a_venir')
+        || (filter === 'pending' && defense.statut === 'evaluation_en_attente')
+        || (filter === 'completed' && defense.statut === 'evaluation_terminee');
+      return matchesSearch && matchesFilter;
+    });
+  }, [filter, search]);
+
+  const refresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 700);
+  };
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'defenses') {
+      onNavigate('jury-students');
+    } else if (tab === 'evaluations') {
+      onNavigate('jury-history');
+    } else if (tab === 'profile') {
+      onNavigate('jury-profile');
+    } else {
+      onNavigate('jury');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.light.tint} />
       <TopBar title="EMIT" showBackButton onBackPress={onExit} showNotification />
-      
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.light.tint} />}
+      >
+        <View style={styles.brandRow}>
+          <Image
+            source={require('../../assets/images/Logo-emit.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.brandText}>EMIT – École de Management et d’Innovation Technologique</Text>
+        </View>
+        <View style={styles.profileRow}>
+          <View style={styles.profileAvatar}>
+            <Ionicons name="person-outline" size={24} color={Colors.light.background} />
+          </View>
           <View>
-            <Text style={styles.juryName}>{juryData.name}</Text>
-            <Text style={styles.juryGrade}>{juryData.grade}</Text>
-            <Text style={styles.juryEstablishment}>{juryData.establishment}</Text>
+            <Text style={styles.greeting}>Bonjour,</Text>
+            <Text style={styles.profileTitle}>Évaluateur</Text>
           </View>
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{juryData.stats.assigned}</Text>
-            <Text style={styles.statLabel}>Jury assignés</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{juryData.stats.toEvaluate}</Text>
-            <Text style={styles.statLabel}>À évaluer</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{juryData.stats.completed}</Text>
-            <Text style={styles.statLabel}>Terminées</Text>
-          </View>
+        <View style={styles.statsGrid}>
+          <StatCard icon="calendar-outline" label="Soutenances aujourd’hui" value={stats.soutenancesAujourdhui} active={filter === 'today'} onPress={() => setFilter('today')} />
+          <StatCard icon="calendar-clear-outline" label="Soutenances à venir" value={stats.soutenancesAVenir} active={filter === 'upcoming'} onPress={() => setFilter('upcoming')} />
+          <StatCard icon="clipboard-outline" label="Évaluations en attente" value={stats.evaluationsEnAttente} active={filter === 'pending'} urgent onPress={() => setFilter('pending')} />
+          <StatCard icon="checkmark-circle-outline" label="Évaluations terminées" value={stats.evaluationsTerminees} active={filter === 'completed'} onPress={() => setFilter('completed')} />
         </View>
 
-        {/* Upcoming Evaluations */}
-        <View style={styles.evaluationsSection}>
-          <Text style={styles.sectionTitle}>Prochaines évaluations</Text>
-          <View style={styles.evaluationsList}>
-            {upcomingEvaluations.map((evaluation, index) => (
-              <EvaluationItem key={index} {...evaluation} onPress={() => onNavigate('jury-defense')} />
-            ))}
-          </View>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color={Colors.light.icon} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Rechercher un étudiant, une salle..."
+            placeholderTextColor={Colors.light.icon}
+            style={styles.searchInput}
+          />
+          {(filter !== 'all' || Boolean(search)) && (
+            <Pressable onPress={() => { setFilter('all'); setSearch(''); }} style={({ pressed }) => pressed && { opacity: 0.8 }}>
+              <Ionicons name="close-circle-outline" size={20} color={Colors.light.icon} />
+            </Pressable>
+          )}
         </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Mes soutenances</Text>
+          <Text style={styles.sectionCount}>{filteredDefenses.length}</Text>
+        </View>
+
+        {filteredDefenses.map((defense) => (
+          <DefenseCard
+            key={defense.id}
+            defense={defense}
+            onPress={() => onNavigate('jury-defense', defense)}
+          />
+        ))}
+        {filteredDefenses.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={40} color={Colors.light.icon} />
+            <Text style={styles.emptyText}>Aucune soutenance ne correspond à votre recherche.</Text>
+          </View>
+        )}
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'students', icon: '🎓', label: 'Étudiants' },
-          { id: 'history', icon: '📋', label: 'Historique' },
-        ]}
+        items={juryTabItems}
         activeTab="home"
-        onTabChange={(tab) => onNavigate(tab === 'students' ? 'jury-students' : 'jury-history')}
+        badges={juryTabBadges}
+        accentColor={JURY_ACCENT_RED}
+        onTabChange={handleTabChange}
       />
     </SafeAreaView>
   );
@@ -160,152 +263,228 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit }) =
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.background,
   },
-  scrollView: {
-    flex: 1,
+  content: {
+    padding: 20,
+    paddingBottom: 28,
   },
-  header: {
-    backgroundColor: '#0D1F4E',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
-  },
-  juryName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    fontFamily: 'PlusJakartaSans-Bold',
-  },
-  juryGrade: {
-    fontSize: 16,
-    color: '#2D84E0',
-    marginBottom: 4,
-    fontFamily: 'Inter-SemiBold',
-  },
-  juryEstablishment: {
+  institution: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.sans,
     fontSize: 14,
-    color: '#FFFFFF',
-    fontFamily: 'Inter-Regular',
+    fontWeight: '700',
+    lineHeight: 20,
+    marginBottom: 20,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: -24,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+  brandRow: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    flexDirection: 'row',
+    marginBottom: 20,
   },
-  statValue: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#0D1F4E',
-    marginBottom: 4,
-    fontFamily: 'JetBrainsMono-Bold',
+  brandLogo: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 6,
+    height: 40,
+    marginRight: 10,
+    width: 40,
   },
-  statLabel: {
+  brandText: {
+    color: Colors.light.tint,
+    flex: 1,
+    fontFamily: Fonts?.sans,
     fontSize: 12,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontWeight: '700',
+    lineHeight: 17,
   },
-  evaluationsSection: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+  profileRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
     marginBottom: 24,
   },
-  sectionTitle: {
+  profileAvatar: {
+    alignItems: 'center',
+    backgroundColor: Colors.light.tint,
+    borderRadius: 28,
+    height: 56,
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 56,
+  },
+  greeting: {
+    color: Colors.light.icon,
+    fontFamily: Fonts?.sans,
+    fontSize: 14,
+  },
+  profileTitle: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.sans,
     fontSize: 18,
     fontWeight: '700',
-    color: '#0D1F4E',
-    marginBottom: 16,
-    fontFamily: 'PlusJakartaSans-Bold',
+    marginTop: 2,
   },
-  evaluationsList: {
-    gap: 12,
-  },
-  evaluationItem: {
+  statsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 28,
   },
-  evaluationAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EAF4FF',
+  statCard: {
+    backgroundColor: Colors.light.background,
+    borderColor: Colors.light.icon,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    width: '48%',
+  },
+  statCardActive: {
+    borderColor: Colors.light.tint,
+    borderWidth: 2,
+  },
+  statCardUrgent: {
+    borderLeftColor: JURY_ACCENT_RED,
+    borderLeftWidth: 4,
+  },
+  statIconUrgent: {
+    backgroundColor: '#FEE2E2',
+  },
+  statValueUrgent: {
+    color: JURY_ACCENT_RED,
+  },
+  searchContainer: {
+    alignItems: 'center',
+    backgroundColor: Colors.light.background,
+    borderColor: Colors.light.icon,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    color: Colors.light.tint,
+    flex: 1,
+    fontFamily: Fonts?.sans,
+    fontSize: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 36,
+  },
+  emptyText: {
+    color: Colors.light.icon,
+    fontFamily: Fonts?.sans,
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  statIcon: {
+    alignItems: 'center',
+    backgroundColor: Colors.light.surface,
+    borderRadius: 18,
+    height: 36,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    marginBottom: 8,
+    width: 36,
   },
-  evaluationAvatarText: {
+  statValue: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.mono,
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  statLabel: {
+    color: Colors.light.icon,
+    fontFamily: Fonts?.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.sans,
     fontSize: 20,
     fontWeight: '700',
-    color: '#0D1F4E',
-    fontFamily: 'PlusJakartaSans-Bold',
   },
-  evaluationInfo: {
-    flex: 1,
-  },
-  evaluationStudentName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0D1F4E',
-    marginBottom: 4,
-    fontFamily: 'Inter-SemiBold',
-  },
-  evaluationMatricule: {
+  sectionCount: {
+    backgroundColor: Colors.light.tint,
+    borderRadius: 999,
+    color: Colors.light.background,
+    fontFamily: Fonts?.mono,
     fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 8,
-    fontFamily: 'Inter-Regular',
+    fontWeight: '700',
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  evaluationMeta: {
+  defenseCard: {
+    backgroundColor: Colors.light.background,
+    borderColor: Colors.light.icon,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 16,
+  },
+  defenseHeader: {
+    alignItems: 'flex-start',
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  evaluationRole: {
-    fontSize: 12,
-    color: '#1A4BA8',
-    fontFamily: 'Inter-SemiBold',
+  defenseStudent: {
+    flex: 1,
+    marginRight: 8,
   },
-  evaluationDate: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+  fieldLabel: {
+    color: Colors.light.icon,
+    fontFamily: Fonts?.sans,
+    fontSize: 11,
+    marginBottom: 4,
   },
-  evaluationRoom: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+  studentName: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.sans,
+    fontSize: 16,
+    fontWeight: '700',
   },
   statusBadge: {
-    paddingHorizontal: 12,
+    alignItems: 'center',
+    borderRadius: 20,
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
   },
-  statusBadgeText: {
+  statusText: {
+    fontFamily: Fonts?.sans,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  thesisTitle: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.sans,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  logistics: {
+    borderTopColor: Colors.light.icon,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+  },
+  logisticsValue: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.mono,
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
   },
 });
 

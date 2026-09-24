@@ -5,15 +5,15 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
-interface ScreenProps { onBack: () => void; submittedTheme?: string }
+interface ScreenProps { onBack: () => void; submittedTheme?: string; onNavigate: (screen: string) => void }
 
-const MyThesisScreen: React.FC<ScreenProps> = ({ onBack, submittedTheme }) => {
+const MyThesisScreen: React.FC<ScreenProps> = ({ onBack, submittedTheme, onNavigate }) => {
   const thesisData = {
     title: submittedTheme || 'Aucun thème enregistré',
     specialty: 'Informatique - Systèmes et Réseaux',
@@ -81,14 +81,9 @@ const MyThesisScreen: React.FC<ScreenProps> = ({ onBack, submittedTheme }) => {
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
-        activeTab="thesis"
-        onTabChange={() => {}}
+        items={studentTabItems}
+        activeTab=""
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -106,24 +101,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     margin: 20,
     marginTop: 20,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   infoCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginTop: 16,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   summaryCard: {
@@ -131,12 +124,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   cardTitle: {
@@ -158,7 +150,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   statusBadgeText: {

@@ -1,106 +1,143 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { mockNotifications } from '../../mocks/notifications';
+import type { NotificationItem as NotificationData } from '../../types/etudiant';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
 interface NotificationItemProps {
-  type: 'reprogrammed' | 'cancelled' | 'info';
-  title: string;
-  timestamp: string;
-  description: string;
-  details?: string;
+  notification: NotificationData;
+  onRead: (id: string) => void;
 }
 
-const NotificationItem: React.FC<NotificationItemProps> = ({ type, title, timestamp, description, details }) => {
-  const getBadgeColor = () => {
-    switch (type) {
-      case 'reprogrammed': return '#2D84E0';
-      case 'cancelled': return '#EF4444';
-      case 'info': return '#6B7280';
-      default: return '#6B7280';
-    }
-  };
+const getNotificationStyle = (type: NotificationData['type']) => {
+  switch (type) {
+    case 'changement_jury':
+      return { icon: 'people-outline' as const, color: '#F59E0B', label: 'Jury' };
+    case 'changement_salle':
+      return { icon: 'location-outline' as const, color: '#2D84E0', label: 'Salle' };
+    case 'changement_horaire':
+      return { icon: 'time-outline' as const, color: '#2D84E0', label: 'Horaire' };
+    case 'convocation_disponible':
+      return { icon: 'document-text-outline' as const, color: '#2D84E0', label: 'Convocation' };
+    case 'resultat_disponible':
+      return { icon: 'trophy-outline' as const, color: '#2D84E0', label: 'Résultat' };
+  }
+};
 
-  const getBadgeText = () => {
-    switch (type) {
-      case 'reprogrammed': return 'Reprogrammée';
-      case 'cancelled': return 'Annulée';
-      case 'info': return 'Info';
-      default: return 'Info';
-    }
-  };
+const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRead }) => {
+  const notificationStyle = getNotificationStyle(notification.type);
+  const isImportant = notification.type === 'changement_jury'
+    || notification.type === 'changement_salle'
+    || notification.type === 'changement_horaire';
 
   return (
-    <View style={styles.notificationItem}>
-      <View style={[styles.notificationDot, { backgroundColor: getBadgeColor() }]} />
+    <Pressable
+      onPress={() => onRead(notification.id)}
+      style={({ pressed }) => [styles.notificationItem,
+        isImportant && {
+          borderLeftColor: notificationStyle.color,
+          borderLeftWidth: 3,
+        },, pressed && { opacity: 0.8 }]}
+    >
+      <View style={styles.iconContainer}>
+        <Ionicons name={notificationStyle.icon} size={22} color={notificationStyle.color} />
+        {!notification.lue && <View style={styles.notificationDot} />}
+      </View>
       <View style={styles.notificationContent}>
         <View style={styles.notificationHeader}>
-          <View style={[styles.typeBadge, { backgroundColor: getBadgeColor() }]}>
-            <Text style={styles.typeBadgeText}>{getBadgeText()}</Text>
+          <View style={[styles.typeBadge, { backgroundColor: notificationStyle.color }]}>
+            <Text style={styles.typeBadgeText}>{notificationStyle.label}</Text>
           </View>
-          <Text style={styles.timestamp}>{timestamp}</Text>
+          <Text style={styles.timestamp}>
+            {new Date(notification.date).toLocaleDateString('fr-FR')}
+          </Text>
         </View>
-        <Text style={styles.notificationTitle}>{title}</Text>
-        <Text style={styles.notificationDescription}>{description}</Text>
-        {details && (
-          <View style={styles.detailsCard}>
-            <Text style={styles.detailsText}>{details}</Text>
-          </View>
-        )}
+        <Text style={styles.notificationTitle}>{notification.titre}</Text>
+        <Text style={styles.notificationDescription}>{notification.description}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
-interface ScreenProps { onBack: () => void; convocationReady: boolean; defenseCompleted?: boolean }
+interface ScreenProps {
+  onBack: () => void;
+  convocationReady: boolean;
+  defenseCompleted?: boolean;
+  onNavigate: (screen: string) => void;
+}
 
-const NotificationsScreen: React.FC<ScreenProps> = ({ onBack, convocationReady, defenseCompleted = false }) => {
-  const notifications = convocationReady ? [
-    {
-      type: 'info' as const,
-      title: 'Convocation disponible',
-      timestamp: 'À l\'instant',
+const NotificationsScreen: React.FC<ScreenProps> = ({
+  onBack,
+  convocationReady,
+  defenseCompleted = false,
+  onNavigate,
+}) => {
+  const [notifications, setNotifications] = useState<NotificationData[]>(() => [
+    ...mockNotifications,
+    ...(convocationReady ? [{
+      id: '4',
+      type: 'convocation_disponible' as const,
+      titre: 'Convocation disponible',
       description: 'Votre convocation officielle et les détails de votre soutenance sont disponibles.',
-      details: '20 Décembre 2024 à 09:00 · Salle A101',
-    },
-    ...(defenseCompleted ? [{
-      type: 'info' as const,
-      title: 'Résultat et PV disponibles',
-      timestamp: 'À l\'instant',
-      description: 'Votre PV de soutenance et votre résultat sont maintenant disponibles.',
+      date: '2026-09-21T09:00:00',
+      lue: false,
     }] : []),
-  ] : [];
+    ...(defenseCompleted ? [{
+      id: '5',
+      type: 'resultat_disponible' as const,
+      titre: 'Résultat disponible',
+      description: 'Votre résultat de soutenance est maintenant disponible.',
+      date: '2026-09-21T10:00:00',
+      lue: false,
+    }] : []),
+  ]);
+
+  const markAsRead = (id: string) => {
+    setNotifications((current) => current.map((notification) => (
+      notification.id === id ? { ...notification, lue: true } : notification
+    )));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
       <TopBar title="Notifications" showBackButton onBackPress={onBack} showNotification />
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.notificationsList}>
-          {notifications.length ? notifications.map((notification, index) => (
-            <NotificationItem key={index} {...notification} />
-          )) : <Text style={styles.emptyText}>Aucune notification pour le moment. La convocation apparaîtra après la préparation de votre soutenance.</Text>}
+          {notifications.length ? notifications.map((notification) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              onRead={markAsRead}
+            />
+          )) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="notifications-off-outline" size={44} color="#1A4BA8" />
+              <Text style={styles.emptyTitle}>Aucune notification</Text>
+              <Text style={styles.emptyText}>
+                Vous serez averti ici en cas de changement concernant votre soutenance (jury, salle, horaire).
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
-        activeTab="home"
-        onTabChange={() => {}}
+        items={studentTabItems}
+        activeTab=""
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -120,19 +157,27 @@ const styles = StyleSheet.create({
   notificationItem: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
-  notificationDot: {
-    width: 4,
-    borderRadius: 2,
+  iconContainer: {
+    width: 28,
     marginRight: 12,
+    position: 'relative',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: -3,
+    right: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2D84E0',
   },
   notificationContent: {
     flex: 1,
@@ -172,24 +217,27 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: 'Inter-Regular',
   },
-  detailsCard: {
-    backgroundColor: '#EAF4FF',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-  },
-  detailsText: {
-    fontSize: 13,
-    color: '#1A4BA8',
-    lineHeight: 18,
-    fontFamily: 'Inter-Regular',
-  },
   emptyText: {
     color: '#667085',
     fontSize: 14,
     lineHeight: 21,
     padding: 20,
     textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#DDEAF7',
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+    padding: 28,
+  },
+  emptyTitle: {
+    color: '#0D1F4E',
+    fontFamily: 'PlusJakartaSans-Bold',
+    fontSize: 17,
+    marginTop: 12,
   },
 });
 

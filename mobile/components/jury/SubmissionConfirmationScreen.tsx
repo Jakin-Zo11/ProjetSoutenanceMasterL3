@@ -1,16 +1,23 @@
 import React from 'react';
 import {
+  Colors } from '../../constants/theme';
+import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Pressable,
 } from 'react-native';
 import TopBar from '../common/TopBar';
+import { Ionicons } from '@expo/vector-icons';
 
-const SubmissionConfirmationScreen: React.FC = () => {
+interface ScreenProps {
+  onBack: () => void;
+}
+
+const SubmissionConfirmationScreen: React.FC<ScreenProps> = ({ onBack }) => {
   const evaluationData = {
     finalGrade: 14.8,
     decision: 'Admis',
@@ -18,18 +25,18 @@ const SubmissionConfirmationScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.light.navy} />
       <TopBar title="Confirmation" showBackButton />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Success Icon */}
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Text style={styles.successIconText}>✓</Text>
+            <Ionicons name="checkmark" size={42} color={Colors.light.white} />
           </View>
           <Text style={styles.successTitle}>Évaluation soumise avec succès</Text>
           <Text style={styles.successSubtitle}>
-            Votre évaluation a été enregistrée et transmise à l'administration
+            Votre évaluation a été enregistrée et transmise à l’administration
           </Text>
         </View>
 
@@ -42,7 +49,8 @@ const SubmissionConfirmationScreen: React.FC = () => {
           </View>
           
           <View style={[styles.decisionBadge, styles.admitted]}>
-            <Text style={styles.decisionBadgeText}>✓ {evaluationData.decision}</Text>
+            <Ionicons name="checkmark" size={16} color={Colors.light.white} />
+            <Text style={styles.decisionBadgeText}>{evaluationData.decision}</Text>
           </View>
         </View>
 
@@ -65,15 +73,16 @@ const SubmissionConfirmationScreen: React.FC = () => {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Prochaines étapes</Text>
             <Text style={styles.infoDescription}>
-              L'évaluation sera consolidée avec les autres membres du jury pour déterminer la note finale et la mention.
+              L’évaluation sera consolidée avec les autres membres du jury pour déterminer la note finale et la mention.
             </Text>
           </View>
         </View>
 
         {/* Back Button */}
-        <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Retour à la liste des étudiants</Text>
-        </TouchableOpacity>
+        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]}>
+          <Ionicons name="arrow-back" size={18} color={Colors.light.primary} />
+          <Text style={styles.backButtonText}>Retour à la liste des étudiants</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -82,7 +91,7 @@ const SubmissionConfirmationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
   },
   scrollView: {
     flex: 1,
@@ -95,7 +104,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.light.success,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -103,40 +112,37 @@ const styles = StyleSheet.create({
   successIconText: {
     fontSize: 40,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.light.white,
     fontFamily: 'PlusJakartaSans-Bold',
   },
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     textAlign: 'center',
     marginBottom: 12,
     fontFamily: 'PlusJakartaSans-Bold',
   },
   successSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Colors.light.tabIconDefault,
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
   },
   gradeCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.white,
     margin: 20,
     marginTop: 20,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
     elevation: 8,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     marginBottom: 20,
     fontFamily: 'PlusJakartaSans-Bold',
   },
@@ -148,12 +154,12 @@ const styles = StyleSheet.create({
   gradeValue: {
     fontSize: 64,
     fontWeight: '800',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     fontFamily: 'JetBrainsMono-Bold',
   },
   gradeMax: {
     fontSize: 24,
-    color: '#6B7280',
+    color: Colors.light.tabIconDefault,
     marginLeft: 4,
     fontFamily: 'JetBrainsMono-Regular',
   },
@@ -163,24 +169,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   admitted: {
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.light.success,
   },
   decisionBadgeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.light.white,
     fontFamily: 'Inter-SemiBold',
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.white,
     marginHorizontal: 20,
     marginTop: 16,
     borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   infoItem: {
@@ -188,24 +191,24 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.light.tabIconDefault,
     marginBottom: 4,
     fontFamily: 'Inter-Regular',
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     fontFamily: 'Inter-SemiBold',
   },
   infoDescription: {
     fontSize: 14,
-    color: '#374151',
+    color: Colors.light.text,
     lineHeight: 20,
     fontFamily: 'Inter-Regular',
   },
   statusBadge: {
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -214,23 +217,23 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A4BA8',
+    color: Colors.light.primary,
     fontFamily: 'Inter-SemiBold',
   },
   backButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.white,
     borderRadius: 16,
     paddingVertical: 18,
     marginHorizontal: 20,
     marginBottom: 24,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#1A4BA8',
+    borderColor: Colors.light.primary,
   },
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A4BA8',
+    color: Colors.light.primary,
     fontFamily: 'Inter-SemiBold',
   },
 });

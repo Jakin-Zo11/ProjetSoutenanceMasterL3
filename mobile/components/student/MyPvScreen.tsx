@@ -5,15 +5,18 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Image,
+  Pressable,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { Ionicons } from '@expo/vector-icons';
+import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
-const MyPvScreen: React.FC<ScreenProps> = ({ onBack }) => {
+const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
   const pvData = {
     isAvailable: true,
   };
@@ -25,7 +28,7 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack }) => {
         <TopBar title="PV de soutenance" showBackButton onBackPress={onBack} showNotification />
         
         <View style={styles.waitingContainer}>
-          <Text style={styles.waitingIcon}>📄</Text>
+          <Ionicons name="document-text-outline" size={48} color="#1A4BA8" />
           <Text style={styles.waitingTitle}>PV non disponible</Text>
           <Text style={styles.waitingSubtitle}>
             Le procès-verbal sera disponible après la clôture de la soutenance
@@ -33,14 +36,9 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack }) => {
         </View>
 
         <BottomNav
-          items={[
-            { id: 'home', icon: '🏠', label: 'Accueil' },
-            { id: 'defense', icon: '📅', label: 'Soutenance' },
-            { id: 'thesis', icon: '📄', label: 'Thèse' },
-            { id: 'profile', icon: '👤', label: 'Profil' },
-          ]}
-          activeTab="defense"
-          onTabChange={() => {}}
+          items={studentTabItems}
+          activeTab=""
+          onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
         />
       </SafeAreaView>
     );
@@ -55,15 +53,19 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack }) => {
         {/* PV Info Card */}
         <View style={styles.pvCard}>
           <View style={styles.pvHeader}>
-            <Text style={styles.emitTitle}>EMIT</Text>
-            <Text style={styles.emitSubtitle}>École de Management et d'Innovation Technologique</Text>
+            <Image
+              source={require('../../assets/images/Logo-emit.png')}
+              style={styles.emitLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.emitSubtitle}>École de Management et d’Innovation Technologique</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.pvSection}>
             <Text style={styles.pvTitle}>PROCÈS-VERBAL DE SOUTENANCE</Text>
-            <Text style={styles.pvSubtitle}>Mémoire de fin d'études - Master 1</Text>
+            <Text style={styles.pvSubtitle}>Mémoire de fin d’études - Master 2</Text>
           </View>
 
           <View style={styles.divider} />
@@ -87,7 +89,8 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack }) => {
           <View style={styles.pvInfo}>
             <Text style={styles.pvLabel}>Décision</Text>
             <View style={[styles.decisionBadge, styles.admitted]}>
-              <Text style={styles.decisionBadgeText}>✓ ADMIS</Text>
+              <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.decisionBadgeText}>ADMIS</Text>
             </View>
           </View>
 
@@ -101,24 +104,19 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack }) => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.primaryButton}>
+          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}>
             <Text style={styles.primaryButtonText}>📥 Télécharger PDF</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton}>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.8 }]}>
             <Text style={styles.secondaryButtonText}>📤 Partager</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'defense', icon: '📅', label: 'Soutenance' },
-          { id: 'thesis', icon: '📄', label: 'Thèse' },
-          { id: 'profile', icon: '👤', label: 'Profil' },
-        ]}
-        activeTab="defense"
-        onTabChange={() => {}}
+        items={studentTabItems}
+        activeTab="result"
+        onTabChange={(tab) => navigateStudentTab(tab, onNavigate)}
       />
     </SafeAreaView>
   );
@@ -160,24 +158,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     margin: 20,
     marginTop: 20,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 4px 8px rgba(0,0,0,0.06)',
+    elevation: 4,
   },
   pvHeader: {
     alignItems: 'center',
     marginBottom: 16,
   },
-  emitTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0D1F4E',
-    fontFamily: 'PlusJakartaSans-ExtraBold',
+  emitLogo: {
+    height: 40,
     marginBottom: 4,
+    width: 120,
   },
   emitSubtitle: {
     fontSize: 14,
@@ -245,7 +240,7 @@ const styles = StyleSheet.create({
   decisionBadge: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   admitted: {
@@ -283,10 +278,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#1A4BA8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(26,75,168,0.3)',
     elevation: 4,
   },
   primaryButtonText: {

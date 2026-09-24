@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface TopBarProps {
   title?: string;
@@ -19,24 +20,23 @@ const TopBar: React.FC<TopBarProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.leftContent}>
-        {showBackButton ? (
-          <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-        ) : (
-          <Image
-            source={require('../../assets/images/Logo-emit.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+        {showBackButton && (
+          <Pressable onPress={onBackPress} style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </Pressable>
         )}
+        <Image
+          source={require('../../assets/images/Logo-emit.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         {title && <Text style={styles.title}>{title}</Text>}
       </View>
       {showNotification && (
-        <TouchableOpacity onPress={onNotificationPress} style={styles.notificationButton}>
-          <Text style={styles.notificationIcon}>🔔</Text>
+        <Pressable onPress={onNotificationPress} style={({ pressed }) => [styles.notificationButton, pressed && { opacity: 0.8 }]}>
+          <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
           <View style={styles.notificationBadge} />
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );
@@ -69,16 +69,9 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  backIcon: {
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
   notificationButton: {
     padding: 8,
     position: 'relative',
-  },
-  notificationIcon: {
-    fontSize: 20,
   },
   notificationBadge: {
     position: 'absolute',

@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import {
+  Colors } from '../../constants/theme';
+import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   TextInput,
-  TouchableOpacity,
   Image,
   StatusBar,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 // TODO: reconnecter à login une fois l'API backend prête
 // import { login } from '../../services/api';
 
@@ -41,11 +44,11 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.light.navy} />
       <View style={styles.content}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton} accessibilityLabel="Retour">
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
+        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]} accessibilityLabel="Retour">
+          <Ionicons name="arrow-back" size={24} color={Colors.light.white} />
+        </Pressable>
         {/* Logo EMIT */}
         <View style={styles.logoContainer}>
           <Image
@@ -57,12 +60,15 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
 
         {/* Jury Badge */}
         <View style={styles.juryBadge}>
-          <Text style={styles.juryBadgeText}>🎓 Portail Jury</Text>
+          <View style={styles.juryBadgeContent}>
+            <Ionicons name="school-outline" size={18} color={Colors.light.white} />
+            <Text style={styles.juryBadgeText}>Portail Évaluateur</Text>
+          </View>
         </View>
 
         {/* Form */}
         <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>Connexion Jury</Text>
+          <Text style={styles.formTitle}>Connexion Évaluateur</Text>
 
           {/* Email */}
           <View style={styles.inputContainer}>
@@ -72,7 +78,7 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
               value={email}
               onChangeText={setEmail}
               placeholder="nom@emit.mg"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.light.placeholder}
               autoCapitalize="none"
               keyboardType="email-address"
             />
@@ -86,26 +92,26 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
                 style={styles.passwordInput}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholderTextColor={Colors.light.placeholder}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-              </TouchableOpacity>
+              <Pressable onPress={() => setShowPassword(!showPassword)} style={({ pressed }) => [styles.eyeButton, pressed && { opacity: 0.8 }]}>
+                <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.light.muted} />
+              </Pressable>
             </View>
           </View>
 
           {/* Bouton connexion */}
           {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
-          <TouchableOpacity onPress={handleLogin} disabled={isLoading} style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}>
+          <Pressable onPress={handleLogin} disabled={isLoading} style={({ pressed }) => [styles.loginButton, isLoading && styles.loginButtonDisabled, pressed && { opacity: 0.8 }]}>
             <Text style={styles.loginButtonText}>{isLoading ? 'Connexion...' : 'Se connecter'}</Text>
-          </TouchableOpacity>
+          </Pressable>
 
           {/* Mot de passe oublié */}
-          <TouchableOpacity style={styles.forgotPassword}>
+          <Pressable style={({ pressed }) => [styles.forgotPassword, pressed && { opacity: 0.8 }]}>
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </SafeAreaView>
@@ -115,7 +121,7 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1F4E',
+    backgroundColor: Colors.light.navy,
   },
   content: {
     flex: 1,
@@ -129,7 +135,7 @@ const styles = StyleSheet.create({
     top: 16,
   },
   backIcon: {
-    color: '#FFFFFF',
+    color: Colors.light.white,
     fontSize: 28,
   },
   logoContainer: {
@@ -141,7 +147,7 @@ const styles = StyleSheet.create({
     height: 120,
   },
   juryBadge: {
-    backgroundColor: '#2D84E0',
+    backgroundColor: Colors.light.sky,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
@@ -151,23 +157,25 @@ const styles = StyleSheet.create({
   juryBadgeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.light.white,
     fontFamily: 'Inter-SemiBold',
   },
+  juryBadgeContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
   formContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.white,
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
     elevation: 8,
   },
   formTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     textAlign: 'center',
     marginBottom: 32,
     fontFamily: 'PlusJakartaSans-Bold',
@@ -178,23 +186,23 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     marginBottom: 8,
     fontFamily: 'Inter-SemiBold',
   },
   input: {
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     fontFamily: 'Inter-Regular',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -202,7 +210,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     fontFamily: 'Inter-Regular',
   },
   eyeButton: {
@@ -212,28 +220,25 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   loginButton: {
-    backgroundColor: '#1A4BA8',
+    backgroundColor: Colors.light.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#1A4BA8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(26,75,168,0.3)',
     elevation: 4,
   },
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.light.white,
     fontFamily: 'Inter-SemiBold',
   },
   loginButtonDisabled: {
     opacity: 0.6,
   },
   errorMessage: {
-    color: '#B42318',
+    color: Colors.light.error,
     fontSize: 13,
     marginBottom: 10,
     textAlign: 'center',
@@ -244,7 +249,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#2D84E0',
+    color: Colors.light.sky,
     fontFamily: 'Inter-Regular',
   },
 });

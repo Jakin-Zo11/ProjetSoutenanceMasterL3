@@ -1,110 +1,143 @@
 import React from 'react';
 import {
+  Colors } from '../../constants/theme';
+import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
+  Pressable,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { juryTabItems, juryTabBadges, JURY_ACCENT_RED } from './juryNavigation';
 
 interface StudentCardProps {
   studentName: string;
   studentMatricule: string;
+  thesisTitle: string;
   date: string;
+  time: string;
+  room: string;
   role: string;
   status: string;
   onPress: () => void;
 }
 
-const StudentCard: React.FC<StudentCardProps> = ({ studentName, studentMatricule, date, role, status, onPress }) => {
+interface Student {
+  studentId: string;
+  studentName: string;
+  studentMatricule: string;
+  thesisTitle: string;
+  date: string;
+  time: string;
+  room: string;
+  role: string;
+  status: string;
+}
+
+const StudentCard: React.FC<StudentCardProps> = ({
+  studentName,
+  studentMatricule,
+  thesisTitle,
+  date,
+  time,
+  room,
+  role,
+  status,
+  onPress,
+}) => {
   const getStatusColor = () => {
     switch (status) {
-      case 'À évaluer': return '#EAF4FF';
-      case 'Évalué': return '#0D1F4E';
-      default: return '#EAF4FF';
+      // Action urgente : badge rouge clair (#FEE2E2).
+      case 'À évaluer': return '#FEE2E2';
+      case 'Évalué': return Colors.light.navy;
+      default: return '#FEE2E2';
     }
   };
 
   const getStatusTextColor = () => {
     switch (status) {
-      case 'À évaluer': return '#1A4BA8';
-      case 'Évalué': return '#FFFFFF';
-      default: return '#1A4BA8';
+      case 'À évaluer': return JURY_ACCENT_RED;
+      case 'Évalué': return Colors.light.white;
+      default: return JURY_ACCENT_RED;
     }
   };
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.studentCard}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.studentCard, pressed && { opacity: 0.8 }]}>
       <View style={styles.studentAvatar}>
         <Text style={styles.studentAvatarText}>{studentName.charAt(0)}</Text>
       </View>
       <View style={styles.studentInfo}>
         <Text style={styles.studentName}>{studentName}</Text>
         <Text style={styles.studentMatricule}>{studentMatricule}</Text>
+        <Text style={styles.studentThesis} numberOfLines={2}>{thesisTitle}</Text>
         <View style={styles.studentMeta}>
           <Text style={styles.studentRole}>{role}</Text>
           <Text style={styles.studentDate}>{date}</Text>
+        </View>
+        <View style={styles.convocationMeta}>
+          <Text style={styles.studentDate}>{time}</Text>
+          <Text style={styles.studentDate}>{room}</Text>
         </View>
       </View>
       <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
         <Text style={[styles.statusBadgeText, { color: getStatusTextColor() }]}>{status}</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
-interface ScreenProps { onBack: () => void }
+interface ScreenProps {
+  onBack: () => void;
+  onOpenDefense: (student: Student) => void;
+  onNavigate: (screen: string) => void;
+}
 
-const MyStudentsScreen: React.FC<ScreenProps> = ({ onBack }) => {
-  const students = [
+const MyStudentsScreen: React.FC<ScreenProps> = ({ onBack, onOpenDefense, onNavigate }) => {
+  // Données locales (Mock Data) — 3 soutenances affectées, aucun appel API / serveur externe.
+  const students: Student[] = [
     {
-      studentName: 'Rakoto Jean',
-      studentMatricule: 'MAT-2024-001',
-      date: '20 Déc 2024',
+      studentId: 'SOUT-2024-001',
+      studentName: 'Alice Martin',
+      studentMatricule: '001M24',
+      thesisTitle: 'Plateforme web de gestion des soutenances à l’EMIT',
+      date: '15 Déc 2024',
+      time: '09:00',
+      room: 'Salle A-101',
       role: 'Président',
       status: 'À évaluer',
     },
     {
-      studentName: 'Rasoa Marie',
-      studentMatricule: 'MAT-2024-002',
-      date: '21 Déc 2024',
+      studentId: 'SOUT-2024-002',
+      studentName: 'Pierre Leroy',
+      studentMatricule: '002M24',
+      thesisTitle: 'Application mobile de suivi académique des étudiants',
+      date: '15 Déc 2024',
+      time: '11:30',
+      room: 'Salle B-205',
       role: 'Rapporteur',
       status: 'À évaluer',
     },
     {
-      studentName: 'Andriamanitra Paul',
-      studentMatricule: 'MAT-2024-003',
-      date: '22 Déc 2024',
+      studentId: 'SOUT-2024-003',
+      studentName: 'Jean Dupont',
+      studentMatricule: '003M24',
+      thesisTitle: 'Système d’information pour la scolarité EMIT',
+      date: '16 Déc 2024',
+      time: '14:00',
+      room: 'Salle C-305',
       role: 'Examinateur',
-      status: 'À évaluer',
-    },
-    {
-      studentName: 'Rasolofomanana Luc',
-      studentMatricule: 'MAT-2024-004',
-      date: '18 Déc 2024',
-      role: 'Président',
-      status: 'Évalué',
-    },
-    {
-      studentName: 'Ravelonarivo Fara',
-      studentMatricule: 'MAT-2024-005',
-      date: '17 Déc 2024',
-      role: 'Rapporteur',
       status: 'Évalué',
     },
   ];
 
-  const handleStudentPress = (studentName: string) => {
-    console.log('Navigate to student details:', studentName);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.light.navy} />
       <TopBar title="Mes étudiants" showBackButton onBackPress={onBack} showNotification />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -113,20 +146,23 @@ const MyStudentsScreen: React.FC<ScreenProps> = ({ onBack }) => {
             <StudentCard
               key={index}
               {...student}
-              onPress={() => handleStudentPress(student.studentName)}
+              onPress={() => onOpenDefense(student)}
             />
           ))}
         </View>
       </ScrollView>
 
       <BottomNav
-        items={[
-          { id: 'home', icon: '🏠', label: 'Accueil' },
-          { id: 'students', icon: '🎓', label: 'Étudiants' },
-          { id: 'history', icon: '📋', label: 'Historique' },
-        ]}
-        activeTab="students"
-        onTabChange={() => {}}
+        items={juryTabItems}
+        activeTab="defenses"
+        badges={juryTabBadges}
+        accentColor={JURY_ACCENT_RED}
+        onTabChange={(tab) => {
+          if (tab === 'home') onBack();
+          if (tab === 'defenses') return;
+          if (tab === 'evaluations') onNavigate('jury-history');
+          if (tab === 'profile') onNavigate('jury-profile');
+        }}
       />
     </SafeAreaView>
   );
@@ -135,7 +171,7 @@ const MyStudentsScreen: React.FC<ScreenProps> = ({ onBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
   },
   scrollView: {
     flex: 1,
@@ -147,20 +183,17 @@ const styles = StyleSheet.create({
   studentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.white,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     elevation: 4,
   },
   studentAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: Colors.light.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -168,7 +201,7 @@ const styles = StyleSheet.create({
   studentAvatarText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     fontFamily: 'PlusJakartaSans-Bold',
   },
   studentInfo: {
@@ -177,28 +210,39 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0D1F4E',
+    color: Colors.light.navy,
     marginBottom: 4,
     fontFamily: 'Inter-SemiBold',
   },
   studentMatricule: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.light.tabIconDefault,
     marginBottom: 8,
     fontFamily: 'Inter-Regular',
+  },
+  studentThesis: {
+    color: Colors.light.navy,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 8,
   },
   studentMeta: {
     flexDirection: 'row',
     gap: 8,
   },
+  convocationMeta: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
   studentRole: {
     fontSize: 12,
-    color: '#1A4BA8',
+    color: Colors.light.primary,
     fontFamily: 'Inter-SemiBold',
   },
   studentDate: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.light.tabIconDefault,
     fontFamily: 'Inter-Regular',
   },
   statusBadge: {
