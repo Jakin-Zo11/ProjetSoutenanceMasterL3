@@ -17,6 +17,9 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 use App\Http\Controllers\Api\Student\StudentAuthController;
 use App\Http\Controllers\Api\Student\StudentProfileController;
+use App\Http\Controllers\Api\PlanificationController;
+use App\Http\Controllers\Api\IndisponibiliteController;
+use App\Http\Controllers\Api\AffectationJuryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +31,18 @@ use App\Http\Controllers\Api\Student\StudentProfileController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+
+// Planification & convocations (Lauris)
+Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
+Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
+Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
+
+Route::get('/planning', [PlanificationController::class, 'index']);
+Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
+
+Route::get('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'index']);
+Route::post('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'store']);
+Route::delete('/affectation-jury/{affectation}', [AffectationJuryController::class, 'destroy']);
 
 // Auth Routes (email + password — admin / jury)
 Route::prefix('v1/auth')->group(function () {
@@ -41,10 +56,8 @@ Route::prefix('v1/auth')->group(function () {
 
 // Student Routes (connexion par matricule)
 Route::prefix('v1/student')->group(function () {
-    // Connexion publique — pas de middleware
     Route::post('/login', [StudentAuthController::class, 'login']);
 
-    // Routes protégées — token Sanctum étudiant
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [StudentProfileController::class, 'show']);
         Route::patch('/profile', [StudentProfileController::class, 'update']);
@@ -53,31 +66,20 @@ Route::prefix('v1/student')->group(function () {
 
 // Admin Routes
 Route::prefix('v1/admin')->middleware(['auth:sanctum', 'role:admin_scolarite'])->group(function () {
-    // Salles & Infrastructure
     Route::apiResource('rooms', RoomController::class);
-
-    // Structure académique
     Route::apiResource('formations', FormationController::class);
     Route::apiResource('promotions', PromotionController::class);
     Route::apiResource('sessions-soutenance', SessionSoutenanceController::class);
-
-    // Utilisateurs et Acteurs
     Route::apiResource('users', UserController::class);
     Route::post('users/{user}/roles', [UserController::class, 'assignRole']);
     Route::apiResource('etudiants', EtudiantController::class);
     Route::apiResource('enseignants', EnseignantController::class);
-
-    // Dépôts & Soutenances (Supervision)
     Route::get('depots', [DepotAdminController::class, 'index']);
     Route::patch('depots/{depot}/statut', [DepotAdminController::class, 'updateStatut']);
     Route::get('soutenances', [SoutenanceAdminController::class, 'index']);
     Route::patch('soutenances/{soutenance}/planning', [SoutenanceAdminController::class, 'updatePlanning']);
-
-    // Tableau de bord & Logs
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('logs', [ActivityLogController::class, 'index']);
-    
-    // Procès-Verbal & Évaluations
     Route::get('soutenances/{id}/pv', [PvSoutenanceController::class, 'getPv']);
     Route::post('soutenances/{id}/cloturer', [PvSoutenanceController::class, 'cloturer']);
 });
