@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+<<<<<<< HEAD
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\FormationController;
@@ -16,6 +17,11 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 
+=======
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PlanningController;
+use App\Http\Controllers\Api\IndisponibiliteController;
+>>>>>>> 10ca56c (feat(planification): structure complete du module planification et convocations)
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -26,7 +32,11 @@ use App\Http\Controllers\Admin\PvSoutenanceController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
+Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
+Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
 
+<<<<<<< HEAD
 // Auth Routes
 Route::prefix('v1/auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -35,6 +45,15 @@ Route::prefix('v1/auth')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
     });
+=======
+Route::get('/planning', [PlanningController::class, 'index']);
+Route::post('/planning/generate', [PlanningController::class, 'generate']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+>>>>>>> 10ca56c (feat(planification): structure complete du module planification et convocations)
 });
 
 // Admin Routes

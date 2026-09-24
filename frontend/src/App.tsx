@@ -15,13 +15,13 @@ import AffectationJuryPage from './pages/admin/AffectationJuryPage';
 import EvaluationsPage from './pages/admin/EvaluationsPage';
 import ResultatsPage from './pages/admin/ResultatsPage';
 import PvPage from './pages/admin/PvPage';
+import { GestionIndisponibilitesCalendar } from './pages/enseignant/GestionIndisponibilitesCalendar';
 import './App.css';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const handleLogin = () => setIsAuthenticated(true);
-
   const handleLogout = () => setIsAuthenticated(false);
 
   if (!isAuthenticated) {
@@ -45,6 +45,12 @@ const App: React.FC = () => {
           <Route path="admin/evaluations" element={<EvaluationsPage />} />
           <Route path="admin/resultats" element={<ResultatsPage />} />
           <Route path="admin/pv" element={<PvPage />} />
+
+          {/* TODO (Lauris) : routes planification a activer une fois les pages codees */}
+          <Route
+            path="enseignant/indisponibilites"
+            element={<GestionIndisponibilitesCalendar enseignantId={1} />}
+          />
         </Route>
       </Routes>
     </BrowserRouter>
