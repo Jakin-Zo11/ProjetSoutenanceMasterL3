@@ -51,7 +51,7 @@ return new class extends Migration
             $table->decimal('weighted_score', 10, 4);
             $table->text('comment')->nullable();
             $table->timestamps();
-            $table->unique(['defense_evaluation_id', 'evaluation_criterion_id']);
+            $table->unique(['defense_evaluation_id', 'evaluation_criterion_id'], 'eval_scores_def_crit_unique');
         });
     }
 

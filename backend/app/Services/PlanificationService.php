@@ -1,171 +1,133 @@
 <?php
+// app/Services/PlanificationService.php
 
 namespace App\Services;
 
 use App\Models\Soutenance;
-use App\Models\Salle;
 use App\Models\Enseignant;
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
+use App\Models\Indisponibilite;
+use App\Http\Controllers\Api\Admin\RoomController; // pas utilise ici, juste reference
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
-class PlanningGeneratorService
+class PlanificationService
 {
+    // Duree fixe d'une soutenance (en minutes) - ajustable
+    protected int $dureeMinutes = 60;
+
+    // Plage horaire de travail par jour
+    protected string $heureDebutJournee = '08:00';
+    protected string $heureFinJournee = '17:00';
+
     /**
-     * Génère automatiquement le planning des soutenances.
-     *
-     * @param string $dateDebut Date de début (ex: '2026-10-15')
-     * @param int $dureeMinutes Durée d'un créneau en minutes (ex: 60)
-     * @param string $heureDebut Heure de début de la journée (ex: '08:00')
-     * @param string $heureFin Heure de fin de la journée (ex: '17:00')
+     * Tente de planifier une soutenance : trouve un creneau, une salle
+     * et 3 enseignants disponibles (president, rapporteur, examinateur).
      */
-    public function generate(string $dateDebut, int $dureeMinutes = 60, string $heureDebut = '08:00', string $heureFin = '17:00'): array
+    public function planifier(Soutenance $soutenance, Carbon $dateSouhaitee): array
     {
-        // 1. Récupérer les soutenances non encore planifiées
-        $soutenances = Soutenance::whereNull('date_soutenance')->get();
-        $salles = Salle::all();
-        $enseignants = Enseignant::all();
+        $conflitService = app(ConflitDetectionService::class);
 
-        if ($soutenances->isEmpty()) {
-            return ['status' => 'warning', 'message' => 'Toutes les soutenances sont déjà planifiées.'];
-        }
+        // 1. Generer les creneaux possibles de la journee
+        $creneaux = $this->genererCreneauxJournee($dateSouhaitee);
 
-        if ($salles->isEmpty()) {
-            return ['status' => 'error', 'message' => 'Aucune salle disponible.'];
-        }
-
-        $currentDate = Carbon::parse($dateDebut);
-        $totalPlanifiees = 0;
-
-        foreach ($soutenances as $soutenance) {
-            $assigned = false;
-
-            while (!$assigned) {
-                // Heures de travail pour la journée en cours
-                $slotStart = $currentDate->copy()->setTimeFromTimeString($heureDebut);
-                $dayEnd = $currentDate->copy()->setTimeFromTimeString($heureFin);
-
-                while ($slotStart->lt($dayEnd)) {
-                    $slotEnd = $slotStart->copy()->addMinutes($dureeMinutes);
-
-                    // Parcourir les salles disponibles
-                    foreach ($salles as $salle) {
-                        
-                        // Vérifier si la salle est disponible
-                        if ($this->isSalleLibre($salle->id, $slotStart, $slotEnd)) {
-                            
-                            // Sélectionner un jury disponible sans conflit d'horaire
-                            $jury = $this->trouverJuryDisponible($enseignants, $slotStart, $slotEnd, $soutenance);
-
-                            if ($jury) {
-                                // Assignation de la soutenance
-                                $soutenance->update([
-                                    'salle_id' => $salle->id,
-                                    'president_id' => $jury['president']->id,
-                                    'examinateur_id' => $jury['examinateur']->id,
-                                    'rapporteur_id' => $jury['rapporteur']->id,
-                                    'date_soutenance' => $slotStart->toDateString(),
-                                    'heure_debut' => $slotStart->toTimeString(),
-                                    'heure_fin' => $slotEnd->toTimeString(),
-                                    'statut' => 'Planifiée'
-                                ]);
-
-                                $assigned = true;
-                                $totalPlanifiees++;
-                                break 2; // Créneau attribué, passer à la soutenance suivante
-                            }
-                        }
-                    }
-
-                    // Avancer au créneau suivant
-                    $slotStart->addMinutes($dureeMinutes);
-                }
-
-                // Si aucun créneau libre aujourd'hui, passer au jour ouvré suivant
-                if (!$assigned) {
-                    $currentDate->addDay();
-                    if ($currentDate->isWeekend()) {
-                        $currentDate->next(Carbon::MONDAY);
-                    }
-                }
+        foreach ($creneaux as [$debut, $fin]) {
+            // 2. Chercher une salle libre sur ce creneau
+            $salle = $this->trouverSalleLibre($debut, $fin, $conflitService);
+            if (!$salle) {
+                continue;
             }
+
+            // 3. Chercher 3 enseignants disponibles sur ce creneau
+            $jurys = $this->trouverJurysDisponibles($debut, $fin, 3, $conflitService);
+            if (count($jurys) < 3) {
+                continue;
+            }
+
+            // 4. Tout est trouve : on planifie
+            return DB::transaction(function () use ($soutenance, $debut, $fin, $salle, $jurys) {
+                $soutenance->update([
+                    'salle_id'   => $salle->id,
+                    'date_debut' => $debut,
+                    'date_fin'   => $fin,
+                    'statut'     => 'planifiee',
+                ]);
+
+                $roles = ['president', 'rapporteur', 'examinateur'];
+                foreach ($jurys as $index => $enseignant) {
+                    $soutenance->affectationsJury()->create([
+                        'enseignant_id' => $enseignant->id,
+                        'role'          => $roles[$index],
+                    ]);
+                }
+
+                return [
+                    'success'    => true,
+                    'salle'      => $salle,
+                    'jurys'      => $jurys,
+                    'date_debut' => $debut,
+                    'date_fin'   => $fin,
+                ];
+            });
         }
 
         return [
-            'status' => 'success',
-            'message' => "Planification terminée avec succès.",
-            'total' => $totalPlanifiees
+            'success' => false,
+            'message' => 'Aucun creneau disponible avec salle et 3 jurys libres pour cette date.',
         ];
     }
 
     /**
-     * Vérifie la disponibilité d'une salle sur un créneau précis.
+     * Genere les creneaux de la journee selon la duree fixe.
      */
-    private function isSalleLibre(int $salleId, Carbon $start, Carbon $end): bool
+    protected function genererCreneauxJournee(Carbon $date): array
     {
-        return !Soutenance::where('salle_id', $salleId)
-            ->where('date_soutenance', $start->toDateString())
-            ->where(function ($query) use ($start, $end) {
-                $query->whereBetween('heure_debut', [$start->toTimeString(), $end->toTimeString()])
-                      ->orWhereBetween('heure_fin', [$start->toTimeString(), $end->toTimeString()]);
-            })
-            ->exists();
+        $creneaux = [];
+        $debut = $date->copy()->setTimeFromTimeString($this->heureDebutJournee);
+        $finJournee = $date->copy()->setTimeFromTimeString($this->heureFinJournee);
+
+        while ($debut->copy()->addMinutes($this->dureeMinutes)->lte($finJournee)) {
+            $fin = $debut->copy()->addMinutes($this->dureeMinutes);
+            $creneaux[] = [$debut->copy(), $fin->copy()];
+            $debut = $fin;
+        }
+
+        return $creneaux;
     }
 
-    /**
-     * Trouve un trio de jury (Président, Examinateur, Rapporteur) disponible.
-     */
-    private function trouverJuryDisponible(Collection $enseignants, Carbon $start, Carbon $end, Soutenance $soutenance): ?array
-{
-    $dateStr = $start->toDateString();
-    $heureDebutStr = $start->toTimeString();
-    $heureFinStr = $end->toTimeString();
+    protected function trouverSalleLibre(Carbon $debut, Carbon $fin, ConflitDetectionService $conflitService)
+    {
+        $salles = \App\Models\Salle::where('is_active', true)->get();
 
-    // 1. Enseignants occupés par une AUTRE SOUTENANCE sur ce créneau
-    $occupesParSoutenanceIds = Soutenance::where('date_soutenance', $dateStr)
-        ->where(function ($q) use ($heureDebutStr, $heureFinStr) {
-            $q->whereBetween('heure_debut', [$heureDebutStr, $heureFinStr])
-              ->orWhereBetween('heure_fin', [$heureDebutStr, $heureFinStr])
-              ->orWhere(function ($sub) use ($heureDebutStr, $heureFinStr) {
-                  $sub->where('heure_debut', '<=', $heureDebutStr)
-                      ->where('heure_fin', '>=', $heureFinStr);
-              });
-        })
-        ->get(['president_id', 'examinateur_id', 'rapporteur_id'])
-        ->flatMap(fn($s) => [$s->president_id, $s->examinateur_id, $s->rapporteur_id])
-        ->filter()
-        ->unique()
-        ->toArray();
+        foreach ($salles as $salle) {
+            if (!$conflitService->salleOccupee($salle->id, $debut, $fin)) {
+                return $salle;
+            }
+        }
 
-    // 2. Enseignants INDISPONIBLES déclarés dans la table indisponibilites
-    $indisponiblesIds = Indisponibilite::where('date', $dateStr)
-        ->where(function ($q) use ($heureDebutStr, $heureFinStr) {
-            $q->whereBetween('heure_debut', [$heureDebutStr, $heureFinStr])
-              ->orWhereBetween('heure_fin', [$heureDebutStr, $heureFinStr])
-              ->orWhere(function ($sub) use ($heureDebutStr, $heureFinStr) {
-                  $sub->where('heure_debut', '<=', $heureDebutStr)
-                      ->where('heure_fin', '>=', $heureFinStr);
-              });
-        })
-        ->pluck('enseignant_id')
-        ->toArray();
-
-    // Fusion des IDs à exclure (soutenances + indisponibilités)
-    $idsAExclure = array_unique(array_merge($occupesParSoutenanceIds, $indisponiblesIds));
-
-    // Filtrer la liste des enseignants
-    $disponibles = $enseignants->reject(fn($e) => in_array($e->id, $idsAExclure));
-
-    // Vérifier si au moins 3 enseignants sont complètement libres
-    if ($disponibles->count() < 3) {
         return null;
     }
 
-    $juryList = $disponibles->values();
+    protected function trouverJurysDisponibles(Carbon $debut, Carbon $fin, int $nombre, ConflitDetectionService $conflitService): array
+    {
+        $enseignants = Enseignant::all();
+        $disponibles = [];
 
-    return [
-        'president'   => $juryList[0],
-        'examinateur' => $juryList[1],
-        'rapporteur'  => $juryList[2],
-    ];
-}
+        foreach ($enseignants as $enseignant) {
+            if (count($disponibles) >= $nombre) {
+                break;
+            }
+
+            if ($conflitService->enseignantIndisponible($enseignant->id, $debut, $fin)) {
+                continue;
+            }
+
+            if ($conflitService->enseignantDejaAffecte($enseignant->id, $debut, $fin)) {
+                continue;
+            }
+
+            $disponibles[] = $enseignant;
+        }
+
+        return $disponibles;
+    }
 }

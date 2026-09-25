@@ -15,8 +15,8 @@ use App\Http\Controllers\Admin\SoutenanceAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
-use App\Http\Controllers\Api\PlanningController;
 use App\Http\Controllers\Api\IndisponibiliteController;
+use App\Http\Controllers\Api\PlanificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,8 +44,8 @@ Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteContr
 Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
 Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
 
-Route::get('/planning', [PlanningController::class, 'index']);
-Route::post('/planning/generate', [PlanningController::class, 'generate']);
+Route::get('/planning', [PlanificationController::class, 'index']);
+Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
 
 // Admin Routes
 Route::prefix('v1/admin')->middleware(['auth:sanctum', 'role:admin_scolarite'])->group(function () {
