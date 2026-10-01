@@ -11,19 +11,24 @@ class Soutenance extends Model
     use HasFactory;
 
     protected $fillable = [
-        'etudiant_id',
-        'salle_id',
-        'theme',
-        'date_debut',
-        'date_fin',
-        'statut',
-    ];
+    'depot_id', // <-- À ajouter
+    'etudiant_id',
+    'salle_id',
+    'theme',
+    'date_debut',
+    'date_fin',
+    'statut',
+];
 
     protected $casts = [
         'date_debut' => 'datetime',
         'date_fin' => 'datetime',
     ];
 
+    public function depot()
+{
+    return $this->belongsTo(Depot::class);
+}
     // Les 3 jurys assignes a cette soutenance
     public function affectationsJury()
     {

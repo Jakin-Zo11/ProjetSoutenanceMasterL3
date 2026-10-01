@@ -18,7 +18,7 @@ import PvPage from './pages/admin/PvPage';
 import { GestionIndisponibilitesCalendar } from './pages/enseignant/GestionIndisponibilitesCalendar';
 import './App.css';
 import PlanningDashboard from './pages/planification/PlanningDashboard';
-
+import AffectationJurysPage from './pages/planification/AffectationJurysPage';
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -46,6 +46,7 @@ const App: React.FC = () => {
           <Route path="admin/evaluations" element={<EvaluationsPage />} />
           <Route path="admin/resultats" element={<ResultatsPage />} />
           <Route path="admin/pv" element={<PvPage />} />
+          <Route path="admin/planification/affectation-jurys" element={<AffectationJurysPage />} />
 
           {/* TODO (Lauris) : routes planification a activer une fois les pages codees */}
           <Route path="admin/planification" element={<PlanningDashboard />} />

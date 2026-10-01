@@ -6,17 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
     {
-        Schema::table('soutenances', function (Blueprint $table) {
-            $table->foreign('salle_id')->references('id')->on('rooms')->nullOnDelete();
-        });
+        // La contrainte de clé étrangère salle_id est déjà gérée dans create_soutenances_table.
     }
 
-    public function down(): void
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
     {
-        Schema::table('soutenances', function (Blueprint $table) {
-            $table->dropForeign(['salle_id']);
-        });
+        //
     }
 };

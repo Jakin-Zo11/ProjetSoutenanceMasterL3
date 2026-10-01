@@ -1,5 +1,4 @@
 <?php
-// database/migrations/xxxx_xx_xx_create_soutenances_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -7,33 +6,40 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
     {
         Schema::create('soutenances', function (Blueprint $table) {
             $table->id();
-
-            // TODO: transformer en foreignId()->constrained() une fois
-            // les tables etudiants et salles confirmees par Dannielah/Ntsoa
-            $table->unsignedBigInteger('etudiant_id')->index();
-            $table->unsignedBigInteger('salle_id')->nullable()->index();
-
+            
+            // Clés étrangères
+            $table->foreignId('depot_id')->constrained('depots')->onDelete('cascade');
+            $table->foreignId('etudiant_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('salle_id')->nullable()->constrained('rooms')->nullOnDelete();
+            
+            // Informations de la soutenance
             $table->string('theme')->nullable();
             $table->dateTime('date_debut')->nullable();
             $table->dateTime('date_fin')->nullable();
-
-            $table->enum('statut', [
-                'en_attente',
-                'planifiee',
-                'en_cours',
-                'terminee',
-                'annulee',
-            ])->default('en_attente');
-
+            
+            // Statut
+            $table->enum('statut', ['en_attente', 'planifiee', 'en_cours', 'terminee', 'annulee'])
+                  ->default('en_attente');
+                  
             $table->timestamps();
         });
     }
 
-    public function down(): void
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
     {
         Schema::dropIfExists('soutenances');
     }

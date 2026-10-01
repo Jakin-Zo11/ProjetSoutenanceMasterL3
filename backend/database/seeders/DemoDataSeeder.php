@@ -122,7 +122,7 @@ class DemoDataSeeder extends Seeder
 
         // 6. Créer une session de soutenance
         $this->command->info('Création de la session de soutenance...');
-        $session = SessionSoutenance::firstOrCreate(['title' => 'Session de Soutenance Septembre 2026'], [
+        SessionSoutenance::firstOrCreate(['title' => 'Session de Soutenance Septembre 2026'], [
             'start_date' => now()->addDays(7),
             'end_date' => now()->addDays(14),
             'status' => 'planifiee',
@@ -144,7 +144,7 @@ class DemoDataSeeder extends Seeder
             ['etudiant_id' => $etudiant5->id, 'promotion_id' => $promotionGB15->id, 'title' => 'Étude des Microorganismes'],
         ];
 
-        $depotIds = [];
+        $createdDepots = [];
         foreach ($depots as $depot) {
             $newDepot = Depot::firstOrCreate(['title' => $depot['title'], 'etudiant_id' => $depot['etudiant_id']], [
                 'promotion_id' => $depot['promotion_id'],
@@ -153,7 +153,7 @@ class DemoDataSeeder extends Seeder
                 'submitted_at' => now()->subDays(10),
                 'validated_at' => now()->subDays(5),
             ]);
-            $depotIds[] = $newDepot->id;
+            $createdDepots[] = $newDepot;
         }
 
         // 8. Créer les soutenances
@@ -163,33 +163,36 @@ class DemoDataSeeder extends Seeder
         $salle3 = Room::where('name', 'Salle Conférence')->first();
 
         $president1 = $juryUsers['president_jury'][0];
-        $president2 = $juryUsers['president_jury'][1];
         $rapporteur1 = $juryUsers['rapporteur'][0];
-        $rapporteur2 = $juryUsers['rapporteur'][1];
         $examinateur1 = $juryUsers['examinateur'][0];
-        $examinateur2 = $juryUsers['examinateur'][1];
 
         $soutenances = [
             [
-                'depot_id' => $depotIds[0],
-                'session_soutenance_id' => $session->id,
-                'room_id' => $salle1->id,
-                'date' => now()->addDays(8)->setHour(9)->setMinute(0),
-                'status' => 'planifiee',
+                'depot_id'    => $createdDepots[0]->id,
+                'etudiant_id' => $createdDepots[0]->etudiant_id,
+                'salle_id'    => $salle1?->id,
+                'theme'       => $createdDepots[0]->title,
+                'date_debut'  => now()->addDays(8)->setHour(9)->setMinute(0),
+                'date_fin'    => now()->addDays(8)->setHour(10)->setMinute(0),
+                'statut'      => 'planifiee',
             ],
             [
-                'depot_id' => $depotIds[1],
-                'session_soutenance_id' => $session->id,
-                'room_id' => $salle2->id,
-                'date' => now()->addDays(8)->setHour(11)->setMinute(0),
-                'status' => 'planifiee',
+                'depot_id'    => $createdDepots[1]->id,
+                'etudiant_id' => $createdDepots[1]->etudiant_id,
+                'salle_id'    => $salle2?->id,
+                'theme'       => $createdDepots[1]->title,
+                'date_debut'  => now()->addDays(8)->setHour(11)->setMinute(0),
+                'date_fin'    => now()->addDays(8)->setHour(12)->setMinute(0),
+                'statut'      => 'planifiee',
             ],
             [
-                'depot_id' => $depotIds[2],
-                'session_soutenance_id' => $session->id,
-                'room_id' => $salle3->id,
-                'date' => now()->addDays(9)->setHour(14)->setMinute(0),
-                'status' => 'planifiee',
+                'depot_id'    => $createdDepots[2]->id,
+                'etudiant_id' => $createdDepots[2]->etudiant_id,
+                'salle_id'    => $salle3?->id,
+                'theme'       => $createdDepots[2]->title,
+                'date_debut'  => now()->addDays(9)->setHour(14)->setMinute(0),
+                'date_fin'    => now()->addDays(9)->setHour(15)->setMinute(0),
+                'statut'      => 'planifiee',
             ],
         ];
 
@@ -236,7 +239,8 @@ class DemoDataSeeder extends Seeder
                 'soutenance_id' => $evaluation['soutenance_id'],
                 'jury_user_id' => $evaluation['jury_user_id']
             ], $evaluation);
-            if (!$eval->note_finale) {
+            
+            if (!$eval->note_finale && method_exists($eval, 'calculerNoteFinale')) {
                 $eval->calculerNoteFinale();
                 $eval->save();
             }

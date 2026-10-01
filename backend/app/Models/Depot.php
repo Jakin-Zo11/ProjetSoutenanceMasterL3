@@ -63,7 +63,7 @@ class Depot extends Model
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function soutenances()
-    {
-        return $this->hasMany(Soutenance::class);
-    }
+{
+    return $this->hasMany(Soutenance::class, 'etudiant_id', 'etudiant_id');
+}
 }
