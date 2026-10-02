@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { StudentProfile } from './StudentLoginScreen';
 import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
+type StudentTab = 'Mon Jury' | 'Mon Mémoire' | 'Soutenance' | 'Documents';
+
 interface ShortcutCardProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;
@@ -25,6 +27,7 @@ interface StudentHomeScreenProps {
   student: StudentProfile;
   themeSubmitted: boolean;
   convocationReady: boolean;
+  hasPv: boolean;
   onNavigate: (screen: string) => void;
   onOpenTheme: () => void;
   onExit: () => void;
@@ -43,7 +46,16 @@ const ShortcutCard: React.FC<ShortcutCardProps> = ({ icon, title, locked, onPres
   </Pressable>
 );
 
-const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSubmitted, convocationReady, onNavigate, onOpenTheme, onExit }) => {
+const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSubmitted, convocationReady, hasPv, onNavigate, onOpenTheme, onExit }) => {
+
+  const [activeTab, setActiveTab] = useState<StudentTab>('Mon Jury');
+
+  const tabs: { label: StudentTab; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+    { label: 'Mon Jury', icon: 'people-outline' },
+    { label: 'Mon Mémoire', icon: 'book-outline' },
+    { label: 'Soutenance', icon: 'calendar-outline' },
+    { label: 'Documents', icon: 'document-text-outline' },
+  ];
 
   const shortcuts: {
     icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -55,14 +67,14 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSub
     { icon: 'document-text-outline', title: 'Ma convocation', screen: 'student-convocation', locked: !convocationReady },
     { icon: 'book-outline', title: 'Mon sujet de thèse', screen: 'student-thesis' },
     { icon: 'stats-chart-outline', title: 'Mon résultat', screen: 'student-result', locked: true },
-    { icon: 'create-outline', title: 'PV de soutenance', screen: 'student-pv', locked: true },
+    { icon: 'create-outline', title: 'PV de soutenance', screen: 'student-pv', locked: !hasPv },
     { icon: 'notifications-outline', title: 'Notifications', screen: 'student-notifications', locked: true },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
-      <TopBar title="EMIT" showBackButton onBackPress={onExit} showNotification={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#DC2626" />
+      <TopBar title="EMIT" showBackButton onBackPress={onExit} showNotification={false} headerColor="#DC2626" />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
@@ -114,72 +126,152 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({ student, themeSub
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {[
-            ['Tous', 'apps-outline'],
-            ['Mon mémoire', 'book-outline'],
-            ['Mon jury', 'people-outline'],
-            ['Soutenance', 'calendar-outline'],
-            ['Documents', 'document-text-outline'],
-          ].map(([filter, icon], index) => (
-            <View key={filter} style={[styles.filterChip, index === 0 && styles.filterChipActive]}>
-              <Ionicons name={icon as React.ComponentProps<typeof Ionicons>['name']} size={15} color={index === 0 ? '#0D1F4E' : '#637799'} />
-              <Text style={[styles.filterText, index === 0 && styles.filterTextActive]}>{filter}</Text>
-            </View>
-          ))}
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.label;
+            return (
+              <Pressable
+                key={tab.label}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setActiveTab(tab.label)}
+              >
+                <Ionicons
+                  name={tab.icon}
+                  size={15}
+                  color={isActive ? '#DC2626' : '#637799'}
+                />
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>{tab.label}</Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
-        <View style={styles.modulesHeader}>
-          <View style={styles.modulesTitleRow}>
-            <Text style={styles.modulesTitle}>Modules & Services</Text>
-            <View style={styles.countBadge}><Text style={styles.countBadgeText}>4</Text></View>
+        {/* Contenu selon l'onglet actif */}
+        {activeTab === 'Mon Jury' && (
+          <View style={styles.tabContent}>
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="person-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="checkmark-circle" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Président du Jury</Text>
+              <Text style={styles.serviceSubtitle}>Prof. Marc Rasamoelina</Text>
+              <View style={styles.serviceBottomRow}>
+                <Text style={[styles.serviceStatusText, { color: '#DC2626' }]}>Confirmé</Text>
+              </View>
+            </View>
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="person-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="checkmark-circle" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Rapporteur</Text>
+              <Text style={styles.serviceSubtitle}>Prof. Sophie Rajaonarivelo</Text>
+              <View style={styles.serviceBottomRow}>
+                <Text style={[styles.serviceStatusText, { color: '#DC2626' }]}>Confirmé</Text>
+              </View>
+            </View>
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="person-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="checkmark-circle" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Examinateur</Text>
+              <Text style={styles.serviceSubtitle}>Prof. Jean-Pierre Rakotomamonjy</Text>
+              <View style={styles.serviceBottomRow}>
+                <Text style={[styles.serviceStatusText, { color: '#DC2626' }]}>Confirmé</Text>
+              </View>
+            </View>
           </View>
-          <Pressable style={({ pressed }) => [styles.submitAction, pressed && { opacity: 0.8 }]} onPress={onOpenTheme}>
-            <Ionicons name="add" size={18} color="#2D84E0" />
-            <Text style={styles.submitActionText}>Soumettre fichier</Text>
-          </Pressable>
-        </View>
+        )}
 
-        <View style={styles.servicesGrid}>
-          <View style={styles.serviceCard}>
-            <View style={styles.serviceTopRow}>
-              <View style={styles.serviceIcon}><Ionicons name="book-outline" size={22} color="#2D84E0" /></View>
-              <Ionicons name={themeSubmitted ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={themeSubmitted ? '#2D84E0' : '#637799'} />
+        {activeTab === 'Mon Mémoire' && (
+          <View style={styles.tabContent}>
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="book-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name={themeSubmitted ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={themeSubmitted ? '#DC2626' : '#637799'} />
+              </View>
+              <Text style={styles.serviceTitle}>Sujet de thèse</Text>
+              <Text style={styles.serviceSubtitle}>{themeSubmitted ? 'Dernière version validée' : 'À renseigner'}</Text>
+              <View style={styles.serviceBottomRow}>
+                <Text style={[styles.serviceStatusText, { color: themeSubmitted ? '#DC2626' : '#637799' }]}>{themeSubmitted ? 'Validé' : 'En attente'}</Text>
+              </View>
             </View>
-            <Text style={styles.serviceTitle}>Sujet de thèse</Text>
-            <Text style={styles.serviceSubtitle}>{themeSubmitted ? 'Dernière version validée' : 'À renseigner'}</Text>
-            <View style={styles.serviceBottomRow}>
-              <Text style={styles.serviceStatusText}>{themeSubmitted ? 'Validé' : 'En attente'}</Text>
-              <View style={styles.serviceStatus}><Ionicons name={themeSubmitted ? 'checkmark' : 'time-outline'} size={13} color="#1A4BA8" /></View>
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="person-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="checkmark-circle" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Prof. Encadreur</Text>
+              <Text style={styles.serviceSubtitle}>3 RDV validés</Text>
+              <View style={styles.serviceBottomRow}>
+                <Pressable style={({ pressed }) => [styles.serviceLink, pressed && { opacity: 0.8 }]}><Text style={[styles.serviceLinkText, { color: '#DC2626' }]}>Contacter</Text></Pressable>
+              </View>
             </View>
           </View>
-          <View style={styles.serviceCard}>
-            <View style={styles.serviceTopRow}>
-              <View style={styles.serviceIcon}><Ionicons name="person-outline" size={22} color="#2D84E0" /></View>
-              <Ionicons name="checkmark-circle" size={18} color="#2D84E0" />
+        )}
+
+        {activeTab === 'Soutenance' && (
+          <View style={styles.tabContent}>
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="calendar-outline" size={22} color="#DC2626" /></View>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusBadgeText}>{convocationReady ? 'Validée' : 'En attente'}</Text>
+                </View>
+              </View>
+              <Text style={styles.serviceTitle}>Ma soutenance</Text>
+              <Text style={styles.serviceSubtitle}>{convocationReady ? '20 Décembre 2024 - 09:00' : 'À définir'}</Text>
+              <View style={styles.serviceBottomRow}>
+                <Text style={[styles.serviceStatusText, { color: '#DC2626' }]}>{convocationReady ? 'Salle A101' : 'En attente'}</Text>
+                <Pressable style={({ pressed }) => [styles.serviceLink, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-convocation')}>
+                  <Text style={[styles.serviceLinkText, { color: '#DC2626' }]}>Voir convocation</Text>
+                </Pressable>
+              </View>
             </View>
-            <Text style={styles.serviceTitle}>Prof. Encadreur</Text>
-            <Text style={styles.serviceSubtitle}>3 RDV validés</Text>
-            <View style={styles.serviceBottomRow}>
-              <Pressable style={({ pressed }) => [styles.serviceLink, pressed && { opacity: 0.8 }]}><Text style={styles.serviceLinkText}>Contacter</Text></Pressable>
-            </View>
+            <Pressable style={({ pressed }) => [styles.serviceCard, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-jury')}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="people-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="chevron-forward-circle-outline" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Mon Jury</Text>
+              <Text style={styles.serviceSubtitle}>{convocationReady ? '3 membres assignés' : 'En attente'}</Text>
+            </Pressable>
           </View>
-          <Pressable style={({ pressed }) => [styles.serviceCard, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-defense')}>
-            <View style={styles.serviceTopRow}>
-              <View style={styles.serviceIcon}><Ionicons name="calendar-outline" size={22} color="#2D84E0" /></View>
-              <Ionicons name="chevron-forward-circle-outline" size={18} color="#2D84E0" />
-            </View>
-            <Text style={styles.serviceTitle}>Jury assigné</Text>
-            <Text style={styles.serviceSubtitle}>{convocationReady ? 'Salle C12 - 10h00' : 'En attente'}</Text>
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.alertServiceCard, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-convocation')}>
-            <View style={styles.serviceTopRow}>
-              <View style={styles.alertIcon}><Ionicons name="warning-outline" size={22} color="#EF4444" /></View>
-              <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-            </View>
-            <Text style={styles.serviceTitle}>Convocation</Text>
-            <Text style={styles.alertSubtitle}>{convocationReady ? 'Disponible' : 'Action requise'}</Text>
-          </Pressable>
-        </View>
+        )}
+
+        {activeTab === 'Documents' && (
+          <View style={styles.tabContent}>
+            <Pressable style={({ pressed }) => [styles.serviceCard, pressed && { opacity: 0.8 }]} onPress={() => onNavigate('student-convocation')}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="document-text-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="download-outline" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Convocation</Text>
+              <Text style={styles.serviceSubtitle}>{convocationReady ? 'PDF disponible' : 'Non disponible'}</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.serviceCard, pressed && { opacity: 0.8 }]}>
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="book-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name="download-outline" size={18} color="#DC2626" />
+              </View>
+              <Text style={styles.serviceTitle}>Sujet de thèse</Text>
+              <Text style={styles.serviceSubtitle}>PDF validé</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => hasPv && onNavigate('student-pv')}
+              disabled={!hasPv}
+              style={({ pressed }) => [styles.serviceCard, pressed && { opacity: 0.8 }, !hasPv && { opacity: 0.6 }]}
+            >
+              <View style={styles.serviceTopRow}>
+                <View style={[styles.serviceIcon, { backgroundColor: '#FEE2E2' }]}><Ionicons name="create-outline" size={22} color="#DC2626" /></View>
+                <Ionicons name={hasPv ? 'chevron-forward-circle-outline' : 'lock-closed-outline'} size={18} color="#637799" />
+              </View>
+              <Text style={styles.serviceTitle}>PV de soutenance</Text>
+              <Text style={styles.serviceSubtitle}>{hasPv ? 'PV disponible' : 'Après validation du jury'}</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Existing detailed status and shortcuts */}
         <View style={styles.legacySection}>
@@ -275,7 +367,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: '#0D1F4E',
+    backgroundColor: '#DC2626',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 32,
@@ -395,16 +487,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   filterChipActive: {
-    backgroundColor: '#EAF4FF',
-    borderColor: '#2D84E0',
+    backgroundColor: '#FEE2E2',
+    borderColor: '#DC2626',
   },
   filterText: {
     color: '#637799',
     fontSize: 12,
   },
   filterTextActive: {
-    color: '#0D1F4E',
+    color: '#DC2626',
     fontWeight: '700',
+  },
+  tabContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginHorizontal: 20,
   },
   modulesHeader: {
     alignItems: 'center',
@@ -517,6 +615,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingHorizontal: 10,
     paddingVertical: 5,
+  },
+  statusBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   serviceBottomRow: {
     alignItems: 'center',

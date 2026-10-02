@@ -37,7 +37,12 @@ const BottomNav: React.FC<BottomNavProps> = ({
           <Pressable
             key={item.id}
             onPress={() => onTabChange(item.id)}
-            style={({ pressed }) => [styles.navItem, isActive && styles.navItemActive, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              styles.navItem,
+              isActive && styles.navItemActive,
+              isActive && accentColor ? { borderTopColor: accentColor } : null,
+              pressed && { opacity: 0.8 },
+            ]}
           >
             {isActive && accentColor ? (
               <View style={[styles.activeAccent, { backgroundColor: accentColor }]} />
@@ -51,7 +56,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
                 accessibilityLabel={item.label}
               />
               {typeof badgeCount === 'number' && badgeCount > 0 && (
-                <View style={styles.badge}>
+                <View style={[styles.badge, { backgroundColor: accentColor || ACCENT_RED }]}>
                   <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
                 </View>
               )}

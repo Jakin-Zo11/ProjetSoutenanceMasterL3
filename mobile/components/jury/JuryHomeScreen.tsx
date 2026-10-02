@@ -95,7 +95,7 @@ const StatCard = ({
   </Pressable>
 );
 
-const DefenseCard = ({ defense, onPress }: { defense: SoutenanceJury; onPress: () => void }) => {
+const DefenseCard = ({ defense, onPress, onEvaluate }: { defense: SoutenanceJury; onPress: () => void; onEvaluate: (defense: SoutenanceJury) => void }) => {
   const status = statusStyles[defense.statut];
 
   return (
@@ -104,6 +104,9 @@ const DefenseCard = ({ defense, onPress }: { defense: SoutenanceJury; onPress: (
         <View style={styles.defenseStudent}>
           <Text style={styles.fieldLabel}>Nom de l’étudiant</Text>
           <Text style={styles.studentName}>{defense.etudiantNom}</Text>
+          <Pressable style={({ pressed }) => [styles.evaluateButton, pressed && { opacity: 0.8 }]} onPress={() => onEvaluate(defense)}>
+            <Text style={styles.evaluateButtonText}>Évaluer</Text>
+          </Pressable>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.backgroundColor }]}>
           {status.icon && <Ionicons name={status.icon} size={13} color={status.color} />}
@@ -169,6 +172,8 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit }) =
   const handleTabChange = (tab: string) => {
     if (tab === 'defenses') {
       onNavigate('jury-students');
+    } else if (tab === 'team') {
+      onNavigate('jury-team');
     } else if (tab === 'evaluations') {
       onNavigate('jury-history');
     } else if (tab === 'profile') {
@@ -200,17 +205,62 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit }) =
           <View style={styles.profileAvatar}>
             <Ionicons name="person-outline" size={24} color={Colors.light.background} />
           </View>
-          <View>
+          <View style={styles.profileInfo}>
             <Text style={styles.greeting}>Bonjour,</Text>
-            <Text style={styles.profileTitle}>Évaluateur</Text>
+            <Text style={styles.profileTitle}>Dr. Randriamanana</Text>
+            <View style={styles.departmentBadge}>
+              <Text style={styles.departmentBadgeText}>Département Informatique</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.statsGrid}>
-          <StatCard icon="calendar-outline" label="Soutenances aujourd’hui" value={stats.soutenancesAujourdhui} active={filter === 'today'} onPress={() => setFilter('today')} />
+          <StatCard icon="calendar-outline" label="Soutenances aujourd'hui" value={stats.soutenancesAujourdhui} active={filter === 'today'} onPress={() => setFilter('today')} />
           <StatCard icon="calendar-clear-outline" label="Soutenances à venir" value={stats.soutenancesAVenir} active={filter === 'upcoming'} onPress={() => setFilter('upcoming')} />
           <StatCard icon="clipboard-outline" label="Évaluations en attente" value={stats.evaluationsEnAttente} active={filter === 'pending'} urgent onPress={() => setFilter('pending')} />
           <StatCard icon="checkmark-circle-outline" label="Évaluations terminées" value={stats.evaluationsTerminees} active={filter === 'completed'} onPress={() => setFilter('completed')} />
+        </View>
+
+        {/* Calendrier des évaluations */}
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeader}>
+            <Text style={styles.calendarTitle}>Calendrier des évaluations</Text>
+            <Text style={styles.calendarSubtitle}>Décembre 2024</Text>
+          </View>
+          <View style={styles.calendarGrid}>
+            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => (
+              <View key={index} style={styles.calendarDayHeader}>
+                <Text style={styles.calendarDayHeaderText}>{day}</Text>
+              </View>
+            ))}
+            {[...Array(35)].map((_, index) => {
+              const dayNumber = index - 6;
+              const hasDefense = defenses.some(d => d.date.includes(`${dayNumber} Déc`));
+              const isToday = dayNumber === 15;
+              const isPast = dayNumber < 15;
+              const isFuture = dayNumber > 15;
+              const isInRange = dayNumber >= 1 && dayNumber <= 31;
+              
+              if (!isInRange) {
+                return <View key={index} style={styles.calendarDayEmpty} />;
+              }
+              
+              return (
+                <View key={index} style={[
+                  styles.calendarDay,
+                  isToday && styles.calendarDayToday,
+                  hasDefense && styles.calendarDayHasDefense
+                ]}>
+                  <Text style={[
+                    styles.calendarDayText,
+                    isToday && styles.calendarDayTextToday,
+                    isPast && styles.calendarDayTextPast
+                  ]}>{dayNumber}</Text>
+                  {hasDefense && <View style={styles.calendarDot} />}
+                </View>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.searchContainer}>
@@ -238,6 +288,7 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit }) =
           <DefenseCard
             key={defense.id}
             defense={defense}
+onEvaluate={(defense) => onNavigate('jury-evaluation', defense)}
             onPress={() => onNavigate('jury-defense', defense)}
           />
         ))}
@@ -485,6 +536,95 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
     fontFamily: Fonts?.mono,
     fontSize: 12,
+  },
+  calendarCard: {
+    backgroundColor: Colors.light.background,
+    borderColor: Colors.light.icon,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+    padding: 16,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calendarTitle: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.sans,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  calendarSubtitle: {
+    color: Colors.light.icon,
+    fontFamily: Fonts?.sans,
+    fontSize: 12,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDayHeader: {
+    width: '14.28%',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  calendarDayHeaderText: {
+    color: Colors.light.icon,
+    fontFamily: Fonts?.sans,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  calendarDayEmpty: {
+    width: '14.28%',
+    paddingVertical: 8,
+  },
+  calendarDay: {
+    width: '14.28%',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  calendarDayToday: {
+    backgroundColor: Colors.light.tint,
+  },
+  calendarDayHasDefense: {
+    backgroundColor: '#FEE2E2',
+  },
+  calendarDayText: {
+    color: Colors.light.tint,
+    fontFamily: Fonts?.mono,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  calendarDayTextToday: {
+    color: Colors.light.background,
+  },
+  calendarDayTextPast: {
+    color: Colors.light.icon,
+  },
+    calendarDot: {
+    backgroundColor: JURY_ACCENT_RED,
+    borderRadius: 2,
+    height: 4,
+    marginTop: 2,
+    width: 4,
+  },
+  evaluateButton: {
+    backgroundColor: JURY_ACCENT_RED,
+    borderRadius: 8,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: 'flex-start',
+  },
+  evaluateButtonText: {
+    color: Colors.light.background,
+    fontFamily: Fonts?.sans,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

@@ -35,6 +35,8 @@ const JuryMember: React.FC<JuryMemberProps> = ({ name, role, isNew }) => (
 interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
 const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
+  const juryAssigned = true; // TODO: connecter à l'état réel
+
   const defenseData = {
     isReprogrammed: true,
     oldDate: '15 Déc 2024',
@@ -57,6 +59,18 @@ const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
       <TopBar title="Ma soutenance" showBackButton onBackPress={onBack} showNotification />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {!juryAssigned ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="people-outline" size={48} color="#DC2626" />
+            </View>
+            <Text style={styles.emptyTitle}>Jury non assigné</Text>
+            <Text style={styles.emptyMessage}>
+              Les membres de votre jury seront affichés ici dès leur assignation par l'administration.
+            </Text>
+          </View>
+        ) : (
+          <>
         {/* Reprogrammed Banner */}
         {defenseData.isReprogrammed && (
           <View style={styles.reprogrammedBanner}>
@@ -115,6 +129,8 @@ const MyDefenseScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
             <JuryMember key={index} {...member} />
           ))}
         </View>
+        </>
+        )}
       </ScrollView>
 
       <BottomNav
@@ -264,6 +280,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     fontFamily: 'Inter-SemiBold',
+  },
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    marginTop: 20,
+    borderRadius: 14,
+    padding: 40,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 40,
+    height: 80,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0D1F4E',
+    marginBottom: 8,
+    fontFamily: 'PlusJakartaSans-Bold',
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: '#637799',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontFamily: 'Inter-Regular',
   },
 });
 

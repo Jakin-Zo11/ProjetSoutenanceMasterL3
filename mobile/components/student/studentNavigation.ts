@@ -13,8 +13,10 @@ export const studentTabItems: {
   label: string;
 }[] = [
   { id: 'home', icon: 'home-outline', label: 'Accueil' },
-  { id: 'defense', icon: 'calendar-outline', label: 'Soutenance' },
-  { id: 'result', icon: 'stats-chart-outline', label: 'Notes' },
+  { id: 'convocation', icon: 'document-text-outline', label: 'Convocation (PDF)' },
+  { id: 'jury', icon: 'people-outline', label: 'Mon Jury' },
+  { id: 'redaction', icon: 'create-outline', label: 'Rédaction & Mémoire' },
+  { id: 'result', icon: 'stats-chart-outline', label: 'Résultats & PV' },
   { id: 'profile', icon: 'person-outline', label: 'Profil' },
 ];
 
@@ -26,7 +28,9 @@ export const navigateStudentTab = (
   onNavigate: (screen: string) => void,
 ) => {
   if (tab === 'home') onNavigate('student');
-  else if (tab === 'defense') onNavigate('student-defense');
+  else if (tab === 'convocation') onNavigate('student-convocation');
+  else if (tab === 'jury') onNavigate('student-jury');
+  else if (tab === 'redaction') onNavigate('student-redaction');
   else if (tab === 'result') onNavigate('student-result');
   else if (tab === 'profile') onNavigate('student-profile');
 };

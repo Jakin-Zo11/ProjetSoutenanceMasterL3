@@ -28,14 +28,19 @@ import StudentThemeScreen from './components/student/StudentThemeScreen';
 import DefenseDetailsScreen from './components/jury/DefenseDetailsScreen';
 import HistoryScreen from './components/jury/HistoryScreen';
 import MyStudentsScreen from './components/jury/MyStudentsScreen';
+import JuryTeamScreen from './components/jury/JuryTeamScreen';
 import EvaluationFormScreen from './components/jury/EvaluationFormScreen';
 import SubmissionConfirmationScreen from './components/jury/SubmissionConfirmationScreen';
+import TeacherHomeScreen, {
+  teacherSchedule,
+  type TeacherDefense,
+} from './components/jury/TeacherHomeScreen';
 
 type MobileScreen =
-  | 'select' | 'student-access' | 'student-theme' | 'jury-login' | 'student' | 'jury'
-  | 'student-defense' | 'student-convocation' | 'student-thesis'
+  | 'select' | 'student-access' | 'student-theme' | 'jury-login' | 'student' | 'jury' | 'teacher'
+  | 'student-defense' | 'student-convocation' | 'student-thesis' | 'student-jury' | 'student-redaction'
   | 'student-result' | 'student-pv' | 'student-notifications' | 'student-profile'
-  | 'jury-defense' | 'jury-history' | 'jury-students' | 'jury-evaluation' | 'jury-confirmation'
+  | 'jury-defense' | 'jury-history' | 'jury-students' | 'jury-team' | 'jury-evaluation' | 'jury-confirmation'
   | 'jury-profile';
 
 type JuryDefense = {
@@ -46,6 +51,8 @@ type JuryDefense = {
   time: string;
   room: string;
   status: string;
+  program?: string;
+  defenseId?: string;
 };
 
 type JuryEvaluation = {
@@ -56,6 +63,7 @@ type JuryEvaluation = {
   average: number;
   mention: string;
   evaluee: true;
+  status: 'draft' | 'completed' | 'validated';
 };
 
 export default function App() {
@@ -67,6 +75,9 @@ export default function App() {
   const [screenHistory, setScreenHistory] = useState<MobileScreen[]>([]);
   const [selectedJuryDefense, setSelectedJuryDefense] = useState<JuryDefense | null>(null);
   const [juryEvaluations, setJuryEvaluations] = useState<Record<string, JuryEvaluation>>({});
+  const [jurySessionAvailability, setJurySessionAvailability] = useState<Record<string, 'absent' | 'reschedule'>>({});
+  const [teacherValidationNotice, setTeacherValidationNotice] = useState<string | null>(null);
+  const [evaluationOrigin, setEvaluationOrigin] = useState<'jury' | 'teacher'>('jury');
   const lastJuryBackPress = useRef(0);
 
   const navigateTo = (nextScreen: MobileScreen) => {
@@ -90,6 +101,7 @@ export default function App() {
         || screen === 'jury-history'
         || screen === 'jury-students'
         || screen === 'jury-evaluation'
+        || screen === 'teacher'
         || screen === 'jury-confirmation'
         || screen === 'jury-profile';
 
@@ -100,6 +112,9 @@ export default function App() {
       }
 
       if (screenHistory.length > 0) {
+        if (screen === 'jury-evaluation' && evaluationOrigin === 'teacher') {
+          setEvaluationOrigin('jury');
+        }
         goBack();
         return true;
       }
@@ -114,7 +129,7 @@ export default function App() {
       return true;
     });
     return () => subscription.remove();
-  }, [screen, screenHistory]);
+  }, [screen, screenHistory, evaluationOrigin]);
 
   // Aucun setState synchrone dans l'effet : le timer souscrit simplement à un
   // système externe (setTimeout). La réinitialisation de convocationReady est
@@ -131,7 +146,7 @@ export default function App() {
   }
 
   if (screen === 'jury-login') {
-    return <JuryLoginScreen onSuccess={() => { setScreenHistory([]); setScreen('jury'); }} onBack={() => setScreen('select')} />;
+    return <JuryLoginScreen onSuccess={() => { setScreenHistory([]); setScreen('teacher'); }} onBack={() => setScreen('select')} />;
   }
 
   if (screen === 'student-theme') {
@@ -165,6 +180,43 @@ export default function App() {
     );
   }
 
+  if (screen === 'teacher') {
+    return (
+      <TeacherHomeScreen
+        onEvaluate={(defense: TeacherDefense) => {
+          setSelectedJuryDefense({
+            studentId: defense.studentId,
+            studentName: defense.studentName,
+            thesisTitle: defense.thesisTitle,
+            date: defense.date,
+            time: defense.time,
+            room: defense.room,
+            status: defense.status,
+            program: defense.program,
+            defenseId: defense.id,
+          });
+          setEvaluationOrigin('teacher');
+          navigateTo('jury-evaluation');
+        }}
+        onExit={() => setScreen('select')}
+        evaluations={juryEvaluations}
+        sessionAvailability={jurySessionAvailability}
+        onSessionAvailabilityChange={(defenseId, status) => {
+          setJurySessionAvailability((current) => {
+            if (!status) {
+              const next = { ...current };
+              delete next[defenseId];
+              return next;
+            }
+            return { ...current, [defenseId]: status };
+          });
+        }}
+        validationNotice={teacherValidationNotice}
+        onDismissValidationNotice={() => setTeacherValidationNotice(null)}
+      />
+    );
+  }
+
   const goToStudentHome = () => setScreen('student');
   const goToJuryHome = () => {
     setScreenHistory([]);
@@ -173,9 +225,25 @@ export default function App() {
 
   if (screen === 'student-defense')   return <MyDefenseScreen onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
   if (screen === 'student-convocation') return <MyConvocationScreen onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
+  if (screen === 'student-jury') return <MyDefenseScreen onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
+  if (screen === 'student-redaction') return <MyThesisScreen submittedTheme={submittedTheme} onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
   if (screen === 'student-thesis') return <MyThesisScreen submittedTheme={submittedTheme} onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
   if (screen === 'student-result') return <MyResultScreen onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
-  if (screen === 'student-pv') return <MyPvScreen onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
+  if (screen === 'student-pv') {
+    if (!student) {
+      return <StudentLoginScreen onSuccess={(profile) => { setStudent(profile); setScreen('student-pv'); }} onBack={goToStudentHome} />;
+    }
+    const studentDefense = teacherSchedule.find((defense) => defense.studentMatricule === student.matricule);
+    const studentEvaluation = studentDefense ? juryEvaluations[studentDefense.studentId] : undefined;
+    return (
+      <MyPvScreen
+        onBack={goToStudentHome}
+        onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)}
+        student={student}
+        evaluation={studentEvaluation}
+      />
+    );
+  }
   if (screen === 'student-notifications') return <NotificationsScreen convocationReady={convocationReady} onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
   if (screen === 'student-profile') return <StudentProfileScreen onBack={goToStudentHome} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} />;
   const navigateJuryTab = (nextScreen: string) => {
@@ -199,6 +267,7 @@ export default function App() {
     );
   }
   if (screen === 'jury-history') return <HistoryScreen onBack={goToJuryHome} onNavigate={navigateJuryTab} evaluatedEvaluations={juryEvaluations} />;
+  if (screen === 'jury-team') return <JuryTeamScreen onBack={goToJuryHome} onNavigate={navigateJuryTab} />;
   if (screen === 'jury-profile') return <JuryProfileScreen onBack={goToJuryHome} onNavigate={navigateJuryTab} />;
   if (screen === 'jury-students') {
     return (
@@ -217,24 +286,62 @@ export default function App() {
           });
           navigateTo('jury-defense');
         }}
+        onEvaluate={(student) => {
+          setSelectedJuryDefense({
+            studentId: student.studentId,
+            studentName: student.studentName,
+            thesisTitle: student.thesisTitle,
+            date: student.date,
+            time: student.time,
+            room: student.room,
+            status: student.status,
+          });
+          navigateTo('jury-evaluation');
+        }}
       />
     );
   }
   if (screen === 'jury-evaluation') {
     const evaluation = selectedJuryDefense ? juryEvaluations[selectedJuryDefense.studentId] : undefined;
+    const returnToTeacher = () => {
+      setEvaluationOrigin('jury');
+      setScreenHistory((history) => history.slice(0, -1));
+      setScreen('teacher');
+    };
     return (
       <EvaluationFormScreen
-        onBack={goToJuryHome}
-        onNavigate={navigateJuryTab}
+        onBack={evaluationOrigin === 'teacher' ? returnToTeacher : goToJuryHome}
+        onNavigate={(nextScreen) => {
+          if (evaluationOrigin === 'teacher' && nextScreen === 'jury') {
+            returnToTeacher();
+            return;
+          }
+          if (evaluationOrigin === 'teacher') setEvaluationOrigin('jury');
+          navigateJuryTab(nextScreen);
+        }}
         evaluatedEvaluation={evaluation}
+        onStatusChange={(updatedEvaluation) => {
+          if (!selectedJuryDefense) return;
+          setJuryEvaluations((current) => ({
+            ...current,
+            [selectedJuryDefense.studentId]: updatedEvaluation,
+          }));
+        }}
         onSubmitted={(submittedEvaluation) => {
           if (!selectedJuryDefense) return;
           setJuryEvaluations((current) => ({
             ...current,
             [selectedJuryDefense.studentId]: submittedEvaluation,
           }));
-          setSelectedJuryDefense((current) => current ? { ...current, status: 'evaluation_terminee' } : current);
-          navigateTo('jury-defense');
+          if (evaluationOrigin === 'teacher') {
+            setTeacherValidationNotice(
+              'Évaluation enregistrée et Procès-Verbal transmis à l’étudiant avec succès.',
+            );
+            returnToTeacher();
+          } else {
+            setSelectedJuryDefense((current) => current ? { ...current, status: 'evaluation_terminee' } : current);
+            navigateTo('jury-defense');
+          }
         }}
         defense={selectedJuryDefense ?? undefined}
       />
@@ -246,7 +353,11 @@ export default function App() {
     if (!student) {
       return <StudentLoginScreen onSuccess={(profile) => { setStudent(profile); setScreen('student'); }} onBack={() => setScreen('select')} />;
     }
-    return <StudentHomeScreen student={student} themeSubmitted={themeSubmitted} convocationReady={convocationReady} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} onOpenTheme={() => navigateTo('student-theme')} onExit={() => { setStudent(null); setThemeSubmitted(false); setSubmittedTheme(''); setConvocationReady(false); setScreen('select'); setScreenHistory([]); }} />;
+    const studentDefense = teacherSchedule.find((defense) => defense.studentMatricule === student.matricule);
+    const hasPv = studentDefense
+      ? juryEvaluations[studentDefense.studentId]?.status === 'validated'
+      : false;
+    return <StudentHomeScreen student={student} themeSubmitted={themeSubmitted} convocationReady={convocationReady} hasPv={hasPv} onNavigate={(nextScreen) => navigateTo(nextScreen as MobileScreen)} onOpenTheme={() => navigateTo('student-theme')} onExit={() => { setStudent(null); setThemeSubmitted(false); setSubmittedTheme(''); setConvocationReady(false); setScreen('select'); setScreenHistory([]); }} />;
   }
 
   return (

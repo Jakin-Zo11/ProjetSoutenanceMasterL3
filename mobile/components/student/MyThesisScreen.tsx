@@ -30,53 +30,60 @@ const MyThesisScreen: React.FC<ScreenProps> = ({ onBack, submittedTheme, onNavig
       <TopBar title="Mon sujet de thèse" showBackButton onBackPress={onBack} showNotification />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Thesis Title Card */}
+        {/* Description du mémoire */}
         <View style={styles.thesisCard}>
-          <Text style={styles.cardTitle}>Intitulé du mémoire</Text>
+          <Text style={styles.cardTitle}>Description du mémoire</Text>
           <Text style={styles.thesisTitle}>{thesisData.title}</Text>
           
-          <View style={styles.statusBadge}>
+          <View style={[styles.statusBadge, submittedTheme ? styles.statusValid : styles.statusPending]}>
             <Text style={styles.statusBadgeText}>{thesisData.status}</Text>
           </View>
         </View>
 
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>Informations</Text>
-          
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Spécialité</Text>
-              <Text style={styles.infoValue}>{thesisData.specialty}</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Directeur</Text>
-              <Text style={styles.infoValue}>{thesisData.director}</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Co-directeur</Text>
-              <Text style={styles.infoValue}>{thesisData.coDirector}</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Date de dépôt</Text>
-              <Text style={styles.infoValue}>{thesisData.depositDate}</Text>
-            </View>
-          </View>
+        {/* Résumé (Abstract) */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.cardTitle}>Résumé (Abstract)</Text>
+          <Text style={styles.summaryText}>{thesisData.summary}</Text>
         </View>
 
-        {/* Summary Card */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.cardTitle}>Résumé</Text>
-          <Text style={styles.summaryText}>{thesisData.summary}</Text>
+        {/* État du dépôt du fichier */}
+        <View style={styles.depositCard}>
+          <Text style={styles.cardTitle}>État du dépôt</Text>
+          
+          <View style={styles.depositRow}>
+            <View style={styles.depositItem}>
+              <Text style={styles.depositLabel}>Spécialité</Text>
+              <Text style={styles.depositValue}>{thesisData.specialty}</Text>
+            </View>
+          </View>
+
+          <View style={styles.depositRow}>
+            <View style={styles.depositItem}>
+              <Text style={styles.depositLabel}>Directeur</Text>
+              <Text style={styles.depositValue}>{thesisData.director}</Text>
+            </View>
+          </View>
+
+          <View style={styles.depositRow}>
+            <View style={styles.depositItem}>
+              <Text style={styles.depositLabel}>Co-directeur</Text>
+              <Text style={styles.depositValue}>{thesisData.coDirector}</Text>
+            </View>
+          </View>
+
+          <View style={styles.depositRow}>
+            <View style={styles.depositItem}>
+              <Text style={styles.depositLabel}>Date de dépôt</Text>
+              <Text style={styles.depositValue}>{thesisData.depositDate}</Text>
+            </View>
+          </View>
+
+          <View style={styles.depositStatusRow}>
+            <Text style={styles.depositStatusLabel}>Statut du fichier</Text>
+            <View style={[styles.depositStatusBadge, submittedTheme ? styles.statusValid : styles.statusPending]}>
+              <Text style={styles.depositStatusText}>{submittedTheme ? 'Déposé et validé' : 'Non déposé'}</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
 
@@ -182,6 +189,68 @@ const styles = StyleSheet.create({
     color: '#374151',
     lineHeight: 22,
     fontFamily: 'Inter-Regular',
+  },
+  statusValid: {
+    backgroundColor: '#10B981',
+  },
+  statusPending: {
+    backgroundColor: '#F59E0B',
+  },
+  depositCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 24,
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
+    elevation: 4,
+  },
+  depositRow: {
+    marginBottom: 16,
+  },
+  depositItem: {
+    flex: 1,
+  },
+  depositLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+    fontFamily: 'Inter-Regular',
+  },
+  depositValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0D1F4E',
+    fontFamily: 'Inter-SemiBold',
+  },
+  depositStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#EAF4FF',
+  },
+  depositStatusLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0D1F4E',
+    fontFamily: 'Inter-SemiBold',
+  },
+  depositStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  depositStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

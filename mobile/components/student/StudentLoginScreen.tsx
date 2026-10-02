@@ -25,6 +25,34 @@ interface StudentLoginScreenProps {
 }
 
 function findStudentByMatricule(matricule: string): StudentProfile | null {
+  const assignedStudents: Record<string, StudentProfile> = {
+    '000I24': {
+      name: 'Alice Martin',
+      matricule: '000I24',
+      formation: 'Informatique de Gestion',
+      promotion: 'Promotion 24 · 2024-2025',
+      email: 'alice.martin@emit.mg',
+      status: 'Actif',
+    },
+    '001I24': {
+      name: 'Pierre Leroy',
+      matricule: '001I24',
+      formation: 'Informatique de Gestion',
+      promotion: 'Promotion 24 · 2024-2025',
+      email: 'pierre.leroy@emit.mg',
+      status: 'Actif',
+    },
+    '002I24': {
+      name: 'Jean Dupont',
+      matricule: '002I24',
+      formation: 'Informatique de Gestion',
+      promotion: 'Promotion 24 · 2024-2025',
+      email: 'jean.dupont@emit.mg',
+      status: 'Actif',
+    },
+  };
+  if (assignedStudents[matricule]) return assignedStudents[matricule];
+
   const match = /^(\d{3})([A-Z])(\d{2})$/.exec(matricule);
   if (!match) return null;
 

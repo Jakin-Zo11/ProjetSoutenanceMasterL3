@@ -35,15 +35,18 @@ const MyResultScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
         <TopBar title="Mon résultat" showBackButton onBackPress={onBack} showNotification />
-        
-        <View style={styles.waitingContainer}>
-          <Ionicons name="hourglass-outline" size={48} color="#1A4BA8" />
-          <Text style={styles.waitingTitle}>En attente de délibération</Text>
-          <Text style={styles.waitingSubtitle}>
-            Les résultats seront disponibles après la réunion du jury
-          </Text>
- <Text style={styles.waitingDate}>Prévu : 22 Décembre 2024</Text>
-        </View>
+
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="stats-chart-outline" size={48} color="#DC2626" />
+            </View>
+            <Text style={styles.emptyTitle}>Résultats non disponibles</Text>
+            <Text style={styles.emptyMessage}>
+              Vos résultats et le procès-verbal seront disponibles après la délibération du jury.
+            </Text>
+          </View>
+        </ScrollView>
 
         <BottomNav
           items={studentTabItems}
@@ -338,6 +341,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0D1F4E',
     fontFamily: 'JetBrainsMono-Bold',
+  },
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    marginTop: 20,
+    borderRadius: 14,
+    padding: 40,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 40,
+    height: 80,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0D1F4E',
+    marginBottom: 8,
+    fontFamily: 'PlusJakartaSans-Bold',
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: '#637799',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontFamily: 'Inter-Regular',
   },
 });
 

@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
+import { Ionicons } from '@expo/vector-icons';
 import { studentTabItems, navigateStudentTab } from './studentNavigation';
 
 interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
 
 const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
+  const convocationReady = true; // TODO: connecter à l'état réel
+
   const convocationData = {
     studentName: 'Rakoto Jean',
     matricule: 'MAT-2024-001',
@@ -33,8 +36,18 @@ const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
       <TopBar title="Ma convocation" showBackButton onBackPress={onBack} showNotification />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Convocation Document */}
-        <View style={styles.convocationCard}>
+        {!convocationReady ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="document-text-outline" size={48} color="#DC2626" />
+            </View>
+            <Text style={styles.emptyTitle}>Convocation non disponible</Text>
+            <Text style={styles.emptyMessage}>
+              Votre convocation sera téléchargeable dès la validation de votre créneau par l'administration.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.convocationCard}>
           {/* Header */}
           <View style={styles.convocationHeader}>
             <Image
@@ -114,16 +127,19 @@ const MyConvocationScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
             <Text style={styles.footerDate}>Généré le 15 Décembre 2024</Text>
           </View>
         </View>
+        )}
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}>
-            <Text style={styles.primaryButtonText}>📥 Télécharger PDF</Text>
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.8 }]}>
-            <Text style={styles.secondaryButtonText}>📤 Partager</Text>
-          </Pressable>
-        </View>
+        {convocationReady && (
+          <View style={styles.actionButtons}>
+            <Pressable style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}>
+              <Text style={styles.primaryButtonText}>📥 Télécharger PDF</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.8 }]}>
+              <Text style={styles.secondaryButtonText}>📤 Partager</Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
 
       <BottomNav
@@ -321,6 +337,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1A4BA8',
     fontFamily: 'Inter-SemiBold',
+  },
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    marginTop: 20,
+    borderRadius: 14,
+    padding: 40,
+    borderWidth: 1,
+    borderColor: '#DDEAF7',
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 40,
+    height: 80,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0D1F4E',
+    marginBottom: 8,
+    fontFamily: 'PlusJakartaSans-Bold',
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: '#637799',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontFamily: 'Inter-Regular',
   },
 });
 

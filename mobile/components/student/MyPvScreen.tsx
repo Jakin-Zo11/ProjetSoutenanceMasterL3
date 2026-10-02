@@ -13,15 +13,24 @@ import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
 import { Ionicons } from '@expo/vector-icons';
 import { studentTabItems, navigateStudentTab } from './studentNavigation';
+import type { StudentProfile } from './StudentLoginScreen';
 
-interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
+interface PvEvaluation {
+  average: number;
+  mention: string;
+  date: string;
+  status: 'draft' | 'completed' | 'validated';
+}
 
-const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
-  const pvData = {
-    isAvailable: true,
-  };
+interface ScreenProps {
+  onBack: () => void;
+  onNavigate: (screen: string) => void;
+  student: StudentProfile;
+  evaluation?: PvEvaluation;
+}
 
-  if (!pvData.isAvailable) {
+const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, student, evaluation }) => {
+  if (!evaluation || evaluation.status !== 'validated') {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
@@ -31,7 +40,7 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
           <Ionicons name="document-text-outline" size={48} color="#1A4BA8" />
           <Text style={styles.waitingTitle}>PV non disponible</Text>
           <Text style={styles.waitingSubtitle}>
-            Le procès-verbal sera disponible après la clôture de la soutenance
+            Le procès-verbal sera disponible après validation de l’évaluation par le jury.
           </Text>
         </View>
 
@@ -65,23 +74,23 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
 
           <View style={styles.pvSection}>
             <Text style={styles.pvTitle}>PROCÈS-VERBAL DE SOUTENANCE</Text>
-            <Text style={styles.pvSubtitle}>Mémoire de fin d’études - Master 2</Text>
+            <Text style={styles.pvSubtitle}>Mémoire de fin d’études · {student.formation}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.pvInfo}>
             <Text style={styles.pvLabel}>Étudiant</Text>
-            <Text style={styles.pvValue}>Rakoto Jean</Text>
-            <Text style={styles.pvMatricule}>MAT-2024-001</Text>
+            <Text style={styles.pvValue}>{student.name}</Text>
+            <Text style={styles.pvMatricule}>{student.matricule}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.pvInfo}>
             <Text style={styles.pvLabel}>Note finale</Text>
-            <Text style={styles.pvGrade}>16.5 / 20</Text>
-            <Text style={styles.pvMention}>Mention : Très Bien</Text>
+            <Text style={styles.pvGrade}>{evaluation.average.toFixed(1)} / 20</Text>
+            <Text style={styles.pvMention}>Mention : {evaluation.mention}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -90,7 +99,9 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
             <Text style={styles.pvLabel}>Décision</Text>
             <View style={[styles.decisionBadge, styles.admitted]}>
               <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.decisionBadgeText}>ADMIS</Text>
+              <Text style={styles.decisionBadgeText}>
+                {evaluation.average >= 10 ? 'ADMIS' : 'AJOURNÉ'}
+              </Text>
             </View>
           </View>
 
@@ -98,7 +109,7 @@ const MyPvScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
 
           <View style={styles.pvFooter}>
             <Text style={styles.pvFooterText}>Document officiel - Signé électroniquement</Text>
-            <Text style={styles.pvFooterDate}>Généré le 20 Décembre 2024</Text>
+            <Text style={styles.pvFooterDate}>Généré le {evaluation.date}</Text>
           </View>
         </View>
 
@@ -244,7 +255,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   admitted: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#1A4BA8',
   },
   decisionBadgeText: {
     fontSize: 16,
