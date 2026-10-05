@@ -15,6 +15,8 @@ use App\Http\Controllers\Admin\SoutenanceAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
+use App\Http\Controllers\Api\Student\StudentAuthController;
+use App\Http\Controllers\Api\Student\StudentProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,13 +29,25 @@ use App\Http\Controllers\Admin\PvSoutenanceController;
 |
 */
 
-// Auth Routes
+// Auth Routes (email + password — admin / jury)
 Route::prefix('v1/auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
-    
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+    });
+});
+
+// Student Routes (connexion par matricule)
+Route::prefix('v1/student')->group(function () {
+    // Connexion publique — pas de middleware
+    Route::post('/login', [StudentAuthController::class, 'login']);
+
+    // Routes protégées — token Sanctum étudiant
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/profile', [StudentProfileController::class, 'show']);
+        Route::patch('/profile', [StudentProfileController::class, 'update']);
     });
 });
 

@@ -15,13 +15,13 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       case 'Publié':
         return 'bg-[#1A4BA8] text-white';
       case 'Annulée':
-        return 'bg-[#FEE2E2] text-[#B91C1C]';
+        return 'bg-[#EFF6FF] text-[#1E3A8A]';
       case 'Reprogrammée':
         return 'bg-[#E0F2FE] text-[#0369A1]';
       case 'Actif':
         return 'bg-[#DBEAFE] text-[#1D4ED8]';
       case 'Inactif':
-        return 'bg-[#FEE2E2] text-[#B91C1C]';
+        return 'bg-[#EFF6FF] text-[#1E3A8A]';
       case 'Soumise':
         return 'bg-[#DBEAFE] text-[#1D4ED8]';
       case 'En attente':
@@ -29,7 +29,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       case 'En cours':
         return 'bg-[#E0F2FE] text-[#0369A1]';
       case 'Conflit':
-        return 'bg-[#FEE2E2] text-[#B91C1C]';
+        return 'bg-[#EFF6FF] text-[#1E3A8A]';
       case 'Non publié':
         return 'bg-[#EAF1FB] text-[#3D6EA8]';
       case 'Généré':

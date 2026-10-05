@@ -1,5 +1,7 @@
 // Types pour le système de gestion des soutenances EMIT
 
+export * from './defense';
+
 export type Status = 'En attente' | 'Planifiée' | 'En cours' | 'Terminé' | 'Publié' | 'Annulée' | 'Reprogrammée';
 
 export interface Student {
@@ -13,6 +15,7 @@ export interface Student {
   promotion: string;
   sujetThese: string;
   status: Status;
+  pdfUrl?: string;
 }
 
 export interface Teacher {
@@ -24,6 +27,7 @@ export interface Teacher {
   specialite: string;
   grade: string;
   status: 'Actif' | 'Inactif';
+  isAvailable: boolean;
 }
 
 export interface Jury {
@@ -48,15 +52,15 @@ export interface Room {
 export interface Defense {
   id: number;
   studentId: number;
-  juryId: number;
-  roomId: number;
+  juryId: number | null;
+  roomId: number | null;
   date: string;
   heure: string;
   duree: number;
   status: Status;
   student?: Student;
-  jury?: Jury;
-  room?: Room;
+  jury?: Jury | null;
+  room?: Room | null;
 }
 
 export interface Slot {
@@ -124,4 +128,5 @@ export interface MenuItem {
   icon: string;
   path: string;
 }
+
 import type { LucideIcon } from 'lucide-react';

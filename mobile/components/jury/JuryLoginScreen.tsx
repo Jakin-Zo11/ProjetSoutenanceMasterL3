@@ -12,13 +12,16 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// TODO: reconnecter à login une fois l'API backend prête
-// import { login } from '../../services/api';
-
 interface JuryLoginScreenProps {
-  onSuccess: () => void;
+  onSuccess: (teacherName: string) => void;
   onBack: () => void;
 }
+
+const demoTeacherAccounts: Record<string, string> = {
+  'randriamanana@emit.mg': 'Dr. Randriamanana',
+  'sophie.rajaonarivelo@emit.mg': 'Prof. Sophie Rajaonarivelo',
+  'jp.rakotomamonjy@emit.mg': 'Prof. Jean-Pierre Rakotomamonjy',
+};
 
 const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) => {
   const [email, setEmail] = useState('');
@@ -32,14 +35,15 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
       setErrorMessage('Veuillez renseigner votre email et votre mot de passe.');
       return;
     }
+    const normalizedEmail = email.trim().toLowerCase();
+    const teacherName = demoTeacherAccounts[normalizedEmail]
+      ?? `Prof. ${normalizedEmail.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())}`;
     setIsLoading(true);
     setErrorMessage('');
-    // TODO: reconnecter à login une fois l'API backend prête
     setTimeout(() => {
-      // Mock login - accepte n'importe quel email/password pour la démo
-      onSuccess();
+      onSuccess(teacherName);
       setIsLoading(false);
-    }, 800)
+    }, 200);
   };
 
   return (
@@ -69,6 +73,9 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
         {/* Form */}
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Connexion Évaluateur</Text>
+          <Text style={styles.demoHint}>
+            Comptes de démonstration : randriamanana@emit.mg, sophie.rajaonarivelo@emit.mg ou jp.rakotomamonjy@emit.mg
+          </Text>
 
           {/* Email */}
           <View style={styles.inputContainer}>
@@ -177,8 +184,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.light.navy,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 12,
     fontFamily: 'PlusJakartaSans-Bold',
+  },
+  demoHint: {
+    color: Colors.light.primary,
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 20,
@@ -238,7 +253,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   errorMessage: {
-    color: Colors.light.error,
+    color: Colors.light.primary,
     fontSize: 13,
     marginBottom: 10,
     textAlign: 'center',

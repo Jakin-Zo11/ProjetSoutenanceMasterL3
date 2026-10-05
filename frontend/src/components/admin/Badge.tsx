@@ -17,7 +17,7 @@ const Badge: React.FC<BadgeProps> = ({ status }) => {
       case 'Publié':
         return 'bg-[#1A4BA8] text-white';
       case 'Annulée':
-        return 'bg-[#FEE2E2] text-[#B91C1C]';
+        return 'bg-[#EFF6FF] text-[#1E3A8A]';
       case 'Reprogrammée':
         return 'bg-[#E0F2FE] text-[#0369A1]';
       default:

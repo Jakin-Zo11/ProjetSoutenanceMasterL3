@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
-import { juryTabItems, juryTabBadges, JURY_ACCENT_RED } from './juryNavigation';
+import { juryTabItems, juryTabBadges, JURY_ACCENT_BLUE } from './juryNavigation';
 
 interface ScreenProps {
   onBack: () => void;
@@ -83,7 +83,7 @@ const JuryProfileScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
         items={juryTabItems}
         activeTab="profile"
         badges={juryTabBadges}
-        accentColor={JURY_ACCENT_RED}
+        accentColor={JURY_ACCENT_BLUE}
         onTabChange={(tab) => {
           if (tab === 'home') onNavigate('jury');
           else if (tab === 'defenses') onNavigate('jury-students');

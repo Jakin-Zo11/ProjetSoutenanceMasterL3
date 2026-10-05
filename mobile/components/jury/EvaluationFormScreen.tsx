@@ -9,12 +9,14 @@ import {
   View,
   Pressable,
   Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
 import { juryTabItems } from './juryNavigation';
 import { Colors, Fonts } from '../../constants/theme';
+import type { EvaluationCriterion, EvaluationScores, JuryEvaluation } from '../../types/defenseWorkflow';
 
 interface ScreenProps {
   onBack: () => void;
@@ -31,44 +33,40 @@ interface ScreenProps {
     room: string;
     program?: string;
     defenseId?: string;
+    studentMatricule?: string;
   };
 }
 
-type CriterionKey = 'oralPresentation' | 'memoryContent' | 'subjectMastery';
-// TODO: remplacer les données de formulaire locales par les données de l'API Jury.
-type JuryEvaluation = {
-  studentName: string;
-  date: string;
-  scores: Record<CriterionKey, string>;
-  remarks: string;
-  average: number;
-  mention: string;
-  evaluee: true;
-  status: 'draft' | 'completed' | 'validated';
-};
+type CriterionKey = EvaluationCriterion;
 
 // Données locales (Mock Data) — aucune requête réseau.
 const defaultDefense = {
   studentId: '001M24',
+  studentMatricule: '001I24',
   studentName: 'Alice Martin',
   program: 'Master 2 - Informatique',
   thesisTitle: 'Plateforme web de gestion des soutenances à l’EMIT',
   defenseId: 'SOUT-2024-001',
-  date: '15 Décembre',
+  date: '11 novembre 2026',
   time: '09:00',
   room: 'Salle A-101',
 };
 
 const criteriaLabels: Record<CriterionKey, string> = {
-  oralPresentation: 'Qualité de la présentation orale',
-  memoryContent: 'Contenu et structure du mémoire',
-  subjectMastery: 'Maîtrise du sujet et réponses aux questions',
+  presentation: 'Qualité de la présentation orale',
+  technical: 'Contenu et maîtrise technique du mémoire',
+  answers: 'Maîtrise du sujet et réponses aux questions',
 };
 
-const clampScore = (value: string) => {
+const scoreMaximums: Record<CriterionKey, number> = {
+  presentation: 5,
+  technical: 10,
+  answers: 5,
+};
+
+const parseScore = (value: string) => {
   const parsed = Number(value.replace(',', '.'));
-  if (Number.isNaN(parsed)) return 0;
-  return Math.min(20, Math.max(0, parsed));
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const getMention = (average: number) => {
@@ -80,23 +78,24 @@ const getMention = (average: number) => {
 
 const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSubmitted, onStatusChange, defense: selectedDefense, evaluatedEvaluation }) => {
   const defense = selectedDefense ?? defaultDefense;
-  const [scores, setScores] = useState<Record<CriterionKey, string>>(
+  const [scores, setScores] = useState<EvaluationScores>(
     evaluatedEvaluation?.scores ?? {
-      oralPresentation: '15',
-      memoryContent: '14',
-      subjectMastery: '16',
+      presentation: '4',
+      technical: '8',
+      answers: '4',
     },
   );
   const [remarks, setRemarks] = useState(evaluatedEvaluation?.remarks ?? '');
   const [showCriteria, setShowCriteria] = useState(true);
-  const [evaluationStatus, setEvaluationStatus] = useState<'draft' | 'completed' | 'validated'>(evaluatedEvaluation?.status ?? 'draft');
-  const [validationDialog, setValidationDialog] = useState<'confirm' | 'draft-saved' | 'completed' | null>(null);
+  const [evaluationStatus, setEvaluationStatus] = useState<'draft' | 'validated'>(evaluatedEvaluation?.status ?? 'draft');
+  const [validationDialog, setValidationDialog] = useState<'confirm' | 'draft-saved' | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const average = useMemo(() => {
-    const values = Object.values(scores).map(clampScore);
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  const totalScore = useMemo(() => {
+    return (Object.keys(scoreMaximums) as CriterionKey[])
+      .reduce((sum, key) => sum + parseScore(scores[key]), 0);
   }, [scores]);
-  const mention = getMention(average);
+  const mention = getMention(totalScore);
   const isEvaluated = evaluationStatus !== 'draft';
 
   const updateScore = (key: CriterionKey, value: string) => {
@@ -105,39 +104,50 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
 
   const createEvaluation = (status: JuryEvaluation['status']): JuryEvaluation => ({
     studentName: defense.studentName,
+    studentMatricule: defense.studentMatricule ?? defense.studentId,
     date: defense.date,
     scores,
     remarks,
-    average,
+    totalScore,
     mention: mention.label,
     evaluee: true,
     status,
   });
 
-  const saveDraft = () => {
+  const saveDraft = async () => {
+    setIsSubmitting(true);
+    await new Promise((resolve) => setTimeout(resolve, 200));
     setEvaluationStatus('draft');
     onStatusChange?.(createEvaluation('draft'));
-    console.log('Evaluation draft saved:', { defense, scores, remarks });
     setValidationDialog('draft-saved');
-  };
-
-  const markCompleted = () => {
-    setEvaluationStatus('completed');
-    onStatusChange?.(createEvaluation('completed'));
-    setValidationDialog('completed');
+    setIsSubmitting(false);
   };
 
   const confirmSubmit = () => {
+    const invalidScore = (Object.keys(scoreMaximums) as CriterionKey[]).find((key) => {
+      const value = Number(scores[key].replace(',', '.'));
+      return !Number.isFinite(value) || value < 0 || value > scoreMaximums[key];
+    });
+    if (invalidScore) {
+      const value = scores[invalidScore];
+      Alert.alert(
+        'Note hors barème',
+        `Le critère « ${criteriaLabels[invalidScore]} » doit être compris entre 0 et ${scoreMaximums[invalidScore]} (valeur saisie : ${value || 'vide'}).`,
+      );
+      return;
+    }
     setValidationDialog('confirm');
   };
 
-  const validateEvaluation = () => {
+  const validateEvaluation = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    await new Promise((resolve) => setTimeout(resolve, 200));
     const evaluation = createEvaluation('validated');
     setEvaluationStatus('validated');
     onStatusChange?.(evaluation);
     setValidationDialog(null);
-    // Le PV local est publié avant le retour au tableau de bord.
-    console.log('PV généré et transmis à l\'étudiant:', { defense, ...evaluation });
+    setIsSubmitting(false);
     if (onSubmitted) {
       onSubmitted(evaluation);
     } else {
@@ -180,7 +190,7 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
           {showCriteria && <View style={styles.criteriaContent}>
           <View style={styles.sectionHeading}>
             <Text style={styles.sectionTitle}>Grille de notation</Text>
-            <Text style={styles.sectionHint}>Chaque critère est noté sur 20</Text>
+            <Text style={styles.sectionHint}>Présentation /5 · Technique /10 · Réponses /5</Text>
           </View>
           {(Object.keys(criteriaLabels) as CriterionKey[]).map((key) => (
             <View key={key} style={styles.criterionRow}>
@@ -195,7 +205,7 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
                   style={styles.scoreInput}
                   selectTextOnFocus
                 />
-                <Text style={styles.scoreMax}>/20</Text>
+                <Text style={styles.scoreMax}>/{scoreMaximums[key]}</Text>
               </View>
             </View>
           ))}
@@ -203,9 +213,9 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
         </View>
 
         <View style={styles.resultCard}>
-          <Text style={styles.resultLabel}>Moyenne finale</Text>
+          <Text style={styles.resultLabel}>Note finale</Text>
           <View style={styles.averageRow}>
-            <Text style={styles.averageValue}>{average.toFixed(1)}</Text>
+            <Text style={styles.averageValue}>{totalScore.toFixed(1)}</Text>
             <Text style={styles.averageMax}>/20</Text>
           </View>
           <View style={[styles.mentionBadge, { backgroundColor: mention.color }]}>
@@ -235,17 +245,11 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
                 <Ionicons name="save-outline" size={18} color={Colors.light.primary} />
                 <Text style={styles.draftButtonText}>Sauvegarder brouillon</Text>
               </Pressable>
-              <Pressable onPress={markCompleted} style={({ pressed }) => [styles.submitButton, pressed && { opacity: 0.8 }]}>
-                <Ionicons name="checkmark-circle-outline" size={19} color={Colors.light.background} />
-                <Text style={styles.submitButtonText}>Évaluation terminée</Text>
+              <Pressable onPress={confirmSubmit} style={({ pressed }) => [styles.submitButton, pressed && { opacity: 0.8 }]}>
+                <Ionicons name="send-outline" size={19} color={Colors.light.background} />
+                <Text style={styles.submitButtonText}>Valider &amp; Évaluer</Text>
               </Pressable>
             </>
-          )}
-          {evaluationStatus === 'completed' && (
-            <Pressable onPress={confirmSubmit} style={({ pressed }) => [styles.submitButton, pressed && { opacity: 0.8 }]}>
-              <Ionicons name="send-outline" size={19} color={Colors.light.background} />
-              <Text style={styles.submitButtonText}>Évaluation validée</Text>
-            </Pressable>
           )}
           {evaluationStatus === 'validated' && (
             <View style={styles.validatedBanner}>
@@ -284,16 +288,12 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
             <Text style={styles.dialogTitle}>
               {validationDialog === 'confirm'
                 ? 'Confirmer la validation'
-                : validationDialog === 'completed'
-                  ? 'Évaluation terminée'
-                  : 'Brouillon sauvegardé'}
+                : 'Brouillon sauvegardé'}
             </Text>
             <Text style={styles.dialogMessage}>
               {validationDialog === 'confirm'
-                ? 'La note globale sera enregistrée et le procès-verbal transmis au compte de cet étudiant.'
-                : validationDialog === 'completed'
-                  ? 'L’évaluation est terminée. Vous pouvez maintenant la valider.'
-                  : 'Votre saisie a été enregistrée localement.'}
+                ? 'La note sur 20 sera enregistrée et le procès-verbal sera disponible dans l’espace étudiant.'
+                : 'Votre saisie a été enregistrée localement.'}
             </Text>
             <View style={styles.dialogActions}>
               {validationDialog === 'confirm' ? (
@@ -308,9 +308,10 @@ const EvaluationFormScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, onSub
                   <Pressable
                     accessibilityRole="button"
                     onPress={validateEvaluation}
+                    disabled={isSubmitting}
                     style={({ pressed }) => [styles.dialogPrimaryButton, pressed && { opacity: 0.8 }]}
                   >
-                    <Text style={styles.dialogPrimaryText}>Valider et transmettre</Text>
+                    <Text style={styles.dialogPrimaryText}>{isSubmitting ? 'Validation...' : 'Valider et transmettre'}</Text>
                   </Pressable>
                 </>
               ) : (

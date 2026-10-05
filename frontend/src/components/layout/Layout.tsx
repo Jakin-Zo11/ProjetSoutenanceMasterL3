@@ -3,16 +3,14 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import DashboardPage from '../pages/DashboardPage';
 import StudentsPage from '../pages/StudentsPage';
-import TeachersPage from '../pages/TeachersPage';
-import JurysPage from '../pages/JurysPage';
-import RoomsPage from '../pages/RoomsPage';
-import DefensesPage from '../pages/DefensesPage';
 import SlotsPage from '../pages/SlotsPage';
 import CalendarPage from '../pages/CalendarPage';
 import AssignmentPage from '../pages/AssignmentPage';
 import EvaluationsPage from '../pages/EvaluationsPage';
 import ResultsPage from '../pages/ResultsPage';
 import ReportsPage from '../pages/ReportsPage';
+import { NAVIGATION_CONFIG } from '../admin/navigationConfig';
+import { DefensesAndRoomsPage, TeachersAndJuriesPage } from '../../pages/admin/CombinedAdminViews';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -21,78 +19,50 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   const [activePage, setActivePage] = useState('dashboard');
-
-  const getPageInfo = () => {
-    const pageInfo: Record<string, { title: string; subtitle: string }> = {
-      dashboard: { title: 'Tableau de bord', subtitle: 'Vue d\'ensemble du système de gestion des soutenances' },
-      students: { title: 'Étudiants', subtitle: 'Gestion des étudiants inscrits' },
-      teachers: { title: 'Enseignants', subtitle: 'Administration du corps enseignant' },
-      jurys: { title: 'Jurys', subtitle: 'Gestion des membres de jury' },
-      rooms: { title: 'Salles', subtitle: 'Administration des espaces de soutenance' },
-      defenses: { title: 'Soutenances', subtitle: 'Planification et suivi des soutenances' },
-      slots: { title: 'Créneaux', subtitle: 'Gestion des créneaux horaires' },
-      calendar: { title: 'Calendrier', subtitle: 'Vue calendrier des soutenances' },
-      assignment: { title: 'Affectation jury', subtitle: 'Affectation des jurys aux soutenances' },
-      evaluations: { title: 'Évaluations', subtitle: 'Suivi des évaluations en cours' },
-      results: { title: 'Résultats', subtitle: 'Consultation et publication des résultats' },
-      reports: { title: 'PV / Rapports', subtitle: 'Gestion des procès-verbaux et rapports' }
-    };
-
-    return pageInfo[activePage] || pageInfo.dashboard;
-  };
-
-  const { title, subtitle } = getPageInfo();
+  const page = NAVIGATION_CONFIG
+    .flatMap((group) => group.items)
+    .find((item) => item.id === activePage);
 
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
         return <DashboardPage />;
-      case 'students':
+      case 'etudiants':
         return <StudentsPage />;
-      case 'teachers':
-        return <TeachersPage />;
-      case 'jurys':
-        return <JurysPage />;
-      case 'rooms':
-        return <RoomsPage />;
-      case 'defenses':
-        return <DefensesPage />;
-      case 'slots':
+      case 'enseignants_jurys':
+        return <TeachersAndJuriesPage />;
+      case 'soutenances_salles':
+        return <DefensesAndRoomsPage />;
+      case 'creneaux':
         return <SlotsPage />;
-      case 'calendar':
+      case 'calendrier':
         return <CalendarPage />;
-      case 'assignment':
+      case 'affectation':
         return <AssignmentPage />;
       case 'evaluations':
         return <EvaluationsPage />;
-      case 'results':
-        return <ResultsPage />;
-      case 'reports':
-        return <ReportsPage />;
-      default:
+      case 'resultats_pv':
         return (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-[#637799] text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
-              Sélectionnez une page
-            </p>
+          <div className="space-y-6">
+            <ResultsPage />
+            <ReportsPage />
           </div>
         );
+      default:
+        return null;
     }
   };
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar fixe */}
       <Sidebar activePage={activePage} onPageChange={setActivePage} onLogout={onLogout} />
-
-      {/* Colonne droite */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header fixe */}
-        <Header title={title} subtitle={subtitle} />
-
-        {/* Main scrollable */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header
+          title={page?.title ?? 'Administration'}
+          subtitle={page?.subtitle ?? 'Système de gestion des soutenances'}
+        />
         <main className="flex-1 overflow-y-auto bg-[#F0F5FB] p-5">
-          {children || renderPage()}
+          {children ?? renderPage()}
         </main>
       </div>
     </div>

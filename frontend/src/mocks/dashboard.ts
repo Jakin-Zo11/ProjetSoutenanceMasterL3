@@ -4,7 +4,7 @@ import type {
   DashboardProgress,
   DashboardStat,
 } from '../types/Dashboard';
-import { CalendarDays, GraduationCap, Scale, UserCheck } from 'lucide-react';
+import { CalendarDays, GraduationCap, Scale, UserCheck, FileText } from 'lucide-react';
 
 // TODO: connecter à l'API /api/admin/dashboard une fois le backend prêt
 export const mockDashboardStats: DashboardStat[] = [
@@ -12,6 +12,7 @@ export const mockDashboardStats: DashboardStat[] = [
   { label: 'Enseignants', value: 32, helper: 'Corps enseignant actif', tone: 'sky', icon: UserCheck },
   { label: 'Jurys constitués', value: 18, helper: 'Pour la session 2025–2026', tone: 'muted', icon: Scale },
   { label: 'Soutenances planifiées', value: 42, helper: '18 cette semaine', tone: 'primary', icon: CalendarDays },
+  { label: 'PV Générés', value: 2, helper: '2 PV disponibles', tone: 'sky', icon: FileText },
 ];
 
 // TODO: connecter à l'API /api/admin/soutenances?upcoming=true une fois le backend prêt

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             AdminUserSeeder::class,
             DemoDataSeeder::class,
+            StudentTestSeeder::class,   // étudiant de test matricule 001I24
         ]);
     }
 }

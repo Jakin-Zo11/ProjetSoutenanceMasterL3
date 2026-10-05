@@ -26,7 +26,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
         {/* Badge EMIT */}
         <div className="px-3 py-1 rounded-full bg-[#EAF4FF] border border-[#2D84E0]">
           <span className="text-xs font-semibold text-[#1A4BA8]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            EMIT | 2024–2025
+            SESSION | 11–16 NOV. 2026
           </span>
         </div>
 
@@ -40,10 +40,10 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
           />
         </div>
 
-        {/* Icône notification avec point rouge */}
+        {/* Icône notification avec point bleu */}
         <button className="relative p-2 rounded-lg hover:bg-[#F0F5FB] transition-colors">
           <Bell size={20} className="text-[#1A4BA8]" aria-hidden="true" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
+          <span className="absolute top-1 right-1 w-2 h-2 bg-[#1E3A8A] rounded-full"></span>
         </button>
 
         {/* Avatar utilisateur */}

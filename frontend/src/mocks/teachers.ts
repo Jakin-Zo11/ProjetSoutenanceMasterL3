@@ -10,7 +10,8 @@ export const mockTeachers: Teacher[] = [
     telephone: '+261 34 00 001 01',
     specialite: 'Intelligence Artificielle',
     grade: 'Professeur',
-    status: 'Actif'
+    status: 'Actif',
+    isAvailable: true,
   },
   {
     id: 2,
@@ -20,7 +21,8 @@ export const mockTeachers: Teacher[] = [
     telephone: '+261 34 00 001 02',
     specialite: 'Base de Données',
     grade: 'Maître de Conférences',
-    status: 'Actif'
+    status: 'Actif',
+    isAvailable: true,
   },
   {
     id: 3,
@@ -30,7 +32,8 @@ export const mockTeachers: Teacher[] = [
     telephone: '+261 34 00 001 03',
     specialite: 'Développement Web',
     grade: 'Maître de Conférences',
-    status: 'Actif'
+    status: 'Actif',
+    isAvailable: true,
   },
   {
     id: 4,
@@ -40,7 +43,8 @@ export const mockTeachers: Teacher[] = [
     telephone: '+261 34 00 001 04',
     specialite: 'Réseaux et Télécommunications',
     grade: 'Professeur',
-    status: 'Actif'
+    status: 'Actif',
+    isAvailable: true,
   },
   {
     id: 5,
@@ -50,6 +54,7 @@ export const mockTeachers: Teacher[] = [
     telephone: '+261 34 00 001 05',
     specialite: 'Sécurité Informatique',
     grade: 'Maître de Conférences',
-    status: 'Inactif'
+    status: 'Inactif',
+    isAvailable: false,
   }
 ];

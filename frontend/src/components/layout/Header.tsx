@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
       <div className="flex items-center gap-4">
         {/* Badge Session */}
         <span className="px-3 py-1.5 bg-[#F0F5FB] border border-[#DDEAF7] text-[#637799] text-xs font-medium rounded-lg">
-          EMIT | 2024 – 2025
+          SESSION | 11–16 NOV. 2026
         </span>
 
         {/* Input Recherche */}
@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
         {/* Icône Cloche avec notification */}
         <button className="relative p-2 text-[#637799] hover:text-[#0B1D3A] hover:bg-[#F0F5FB] rounded-lg transition-colors">
           <Bell size={20} />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#DC2626] rounded-full"></span>
+          <span className="absolute top-1 right-1 w-2 h-2 bg-[#1E3A8A] rounded-full"></span>
         </button>
 
         {/* Avatar */}

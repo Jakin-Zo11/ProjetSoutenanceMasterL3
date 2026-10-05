@@ -9,7 +9,7 @@ const DashboardPage: React.FC = () => {
       en_cours: { bg: 'bg-[#DBEAFE]', text: 'text-[#1D4ED8]', label: 'En cours' },
       termine: { bg: 'bg-[#1A4BA8]', text: 'text-white', label: 'Terminé' },
       publie: { bg: 'bg-[#1D4ED8]', text: 'text-white', label: 'Publié' },
-      annulee: { bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]', label: 'Annulée' },
+      annulee: { bg: 'bg-[#EFF6FF]', text: 'text-[#1E3A8A]', label: 'Annulée' },
       reprogrammee: { bg: 'bg-[#E0F2FE]', text: 'text-[#0369A1]', label: 'Reprogrammée' }
     };
 
@@ -32,7 +32,7 @@ const DashboardPage: React.FC = () => {
     { label: 'Évaluations Terminées', value: 22, icon: CheckCircle, color: 'from-[#1A4BA8] to-[#2D84E0]' },
     { label: 'En Cours', value: 12, icon: Clock, color: 'from-[#0D1F4E] to-[#1A4BA8]' },
     { label: 'En Attente', value: 8, icon: AlertTriangle, color: 'from-[#2D84E0] to-[#1A4BA8]' },
-    { label: 'Annulées/Reportées', value: 3, icon: XCircle, color: 'from-[#DC2626] to-[#B91C1C]' }
+    { label: 'Annulées/Reportées', value: 3, icon: XCircle, color: 'from-[#1E3A8A] to-[#1E3A8A]' }
   ];
 
   const upcomingDefenses = [

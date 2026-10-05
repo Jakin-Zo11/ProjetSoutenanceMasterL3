@@ -210,8 +210,8 @@ const AdminDashboard = ({ activeTab, setActiveTab, onLogout }) => {
         label: 'Publié'
       },
       annulee: {
-        bg: 'bg-[#FFF1F1]',
-        text: 'text-[#991B1B]',
+        bg: 'bg-[#EFF6FF]',
+        text: 'text-[#1E3A8A]',
         label: 'Annulée'
       },
       reprogrammee: {
@@ -225,8 +225,8 @@ const AdminDashboard = ({ activeTab, setActiveTab, onLogout }) => {
         label: 'Validé'
       },
       rejete: {
-        bg: 'bg-[#FFF1F1]',
-        text: 'text-[#991B1B]',
+        bg: 'bg-[#EFF6FF]',
+        text: 'text-[#1E3A8A]',
         label: 'Rejeté'
       }
     };
@@ -437,7 +437,7 @@ const AdminDashboard = ({ activeTab, setActiveTab, onLogout }) => {
 
                 {/* Info Panels */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div className="bg-[#FFF1F1] border border-red-200 rounded-3xl p-6">
+                  <div className="bg-[#EFF6FF] border border-red-200 rounded-3xl p-6">
                     <div className="flex items-center gap-2 mb-2">
                       <XCircle className="w-5 h-5 text-red-600" />
                       <h3 className="text-sm font-semibold text-red-600">Soutenances Annulées</h3>
@@ -1077,9 +1077,9 @@ const AdminDashboard = ({ activeTab, setActiveTab, onLogout }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-[#FEE2E2] border border-[#B91C1C] rounded-lg p-4">
+                    <div className="bg-[#EFF6FF] border border-[#1E3A8A] rounded-lg p-4">
                       <div className="flex items-center gap-3">
-                        <XCircle className="w-5 h-5 text-[#B91C1C]" />
+                        <XCircle className="w-5 h-5 text-[#1E3A8A]" />
                         <div>
                           <p className="font-medium text-[#0B1D3A]">M. Andriamanitra</p>
                           <p className="text-sm text-[#637799]">Indisponible - Congé du 10/09 au 20/09/2026</p>
@@ -1116,7 +1116,7 @@ const AdminDashboard = ({ activeTab, setActiveTab, onLogout }) => {
                     </button>
                     <button
                       onClick={() => setModalStep(4)}
-                      className="w-full p-4 bg-[#FEE2E2] border border-[#B91C1C] rounded-lg text-left hover:bg-[#B91C1C] hover:text-white transition-colors"
+                      className="w-full p-4 bg-[#EFF6FF] border border-[#1E3A8A] rounded-lg text-left hover:bg-[#1E3A8A] hover:text-white transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <XCircle className="w-5 h-5" />

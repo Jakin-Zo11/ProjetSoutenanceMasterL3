@@ -30,7 +30,7 @@ const AssignmentPage: React.FC = () => {
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-[#FEE2E2] text-[#B91C1C]">
+        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-[#EFF6FF] text-[#1E3A8A]">
           Indisponible
         </span>
       );

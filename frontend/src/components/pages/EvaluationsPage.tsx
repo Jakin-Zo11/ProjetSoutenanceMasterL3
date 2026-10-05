@@ -7,7 +7,7 @@ const EvaluationsPage: React.FC = () => {
       soumise: { bg: 'bg-[#EAF1FB]', text: 'text-[#3D6EA8]', label: 'Soumise' },
       en_attente: { bg: 'bg-[#FEF3C7]', text: 'text-[#92400E]', label: 'En attente' },
       en_cours: { bg: 'bg-[#DBEAFE]', text: 'text-[#1D4ED8]', label: 'En cours' },
-      conflit: { bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]', label: 'Conflit' },
+      conflit: { bg: 'bg-[#EFF6FF]', text: 'text-[#1E3A8A]', label: 'Conflit' },
       complete: { bg: 'bg-[#E1F8F0]', text: 'text-[#065F46]', label: 'Complète' }
     };
 
@@ -88,7 +88,7 @@ const EvaluationsPage: React.FC = () => {
                 {evaluations.filter(e => e.statut === 'conflit').length}
               </p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-[#DC2626] to-[#B91C1C] rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#1E3A8A] to-[#1E3A8A] rounded-lg flex items-center justify-center">
               <AlertTriangle size={24} className="text-white" />
             </div>
           </div>

@@ -21,7 +21,7 @@ const ALIAS = {
   'Colors.light.black': '#000000', 'Colors.light.white': '#FFFFFF',
   'Colors.light.navy': '#0D1F4E', 'Colors.light.tint': '#0D1F4E',
   'Colors.light.primary': '#1A4BA8', 'Colors.light.sky': '#2D84E0',
-  'Colors.light.error': '#DC2626',
+  'Colors.light.error': '#1E3A8A',
 };
 
 function rgba(token, opacity) {

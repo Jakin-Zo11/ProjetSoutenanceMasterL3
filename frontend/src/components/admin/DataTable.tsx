@@ -33,7 +33,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data, onRowClick }) => {
           <tbody className="divide-y divide-[#DDEAF7]">
             {data.map((row, index) => (
               <tr
-                key={index}
+                key={row.id ?? row.reference ?? index}
                 className={`hover:bg-[#F0F5FB] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                 onClick={() => onRowClick?.(row)}
               >

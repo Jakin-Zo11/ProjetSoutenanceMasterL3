@@ -8,16 +8,16 @@ export default {
     extend: {
       colors: {
         emit: {
-          navy: '#0D1F4E',
-          primary: '#1A4BA8',
-          sky: '#2D84E0',
-          skyLight: '#EAF4FF',
-          bg: '#F0F5FB',
+          navy: '#0A192F',
+          primary: '#1E3A8A',
+          sky: '#3B82F6',
+          skyLight: '#F8FAFC',
+          bg: '#F8FAFC',
           card: '#FFFFFF',
           border: '#DDEAF7',
-          text: '#0B1D3A',
+          text: '#0A192F',
           muted: '#637799',
-          error: '#DC2626',
+          error: '#1E3A8A',
         },
       },
       fontFamily: {

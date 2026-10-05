@@ -13,13 +13,13 @@ interface BottomNavProps {
   items: NavItem[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
-  /** Pastilles rouges (#EF4444) optionnelles : { idOnglet: nombre } */
+  /** Pastilles bleues (#3B82F6) optionnelles : { idOnglet: nombre } */
   badges?: Record<string, number>;
-  /** Ligne d'accent colorée (ex: rouge) sous l'onglet actif */
+  /** Ligne d'accent colorée (ex: bleu) sous l'onglet actif */
   accentColor?: string;
 }
 
-const ACCENT_RED = '#EF4444';
+const ACCENT_BLUE = '#3B82F6';
 
 const BottomNav: React.FC<BottomNavProps> = ({
   items,
@@ -47,7 +47,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
             {isActive && accentColor ? (
               <View style={[styles.activeAccent, { backgroundColor: accentColor }]} />
             ) : null}
-            {/* Trait rouge discret en haut de l'onglet actif (borderTopWidth: 2). */}
+            {/* Trait bleu discret en haut de l'onglet actif (borderTopWidth: 2). */}
             <View style={styles.iconContainer}>
               <Ionicons
                 name={item.icon}
@@ -56,7 +56,7 @@ const BottomNav: React.FC<BottomNavProps> = ({
                 accessibilityLabel={item.label}
               />
               {typeof badgeCount === 'number' && badgeCount > 0 && (
-                <View style={[styles.badge, { backgroundColor: accentColor || ACCENT_RED }]}>
+                <View style={[styles.badge, { backgroundColor: accentColor || ACCENT_BLUE }]}>
                   <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
                 </View>
               )}
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   },
   navItemActive: {
     backgroundColor: '#0D1F4E',
-    borderTopColor: ACCENT_RED,
+    borderTopColor: ACCENT_BLUE,
     borderTopWidth: 2,
   },
   activeAccent: {
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: ACCENT_RED,
+    backgroundColor: ACCENT_BLUE,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     alignItems: 'center',

@@ -1,216 +1,174 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Info } from 'lucide-react';
-import { DataTable, StatusBadge, Button } from '../../components/admin';
-import { mockReports } from '../../mocks';
+import { DataTable } from '../../components/admin';
+import { useAdminData } from '../../context/AdminDataContext';
 
-const PvPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<any>(null);
+interface PvPageProps {
+  initialTab?: 'evaluations' | 'results' | 'pv';
+}
 
-  useEffect(() => {
-    // TODO: connecter à l'API /api/reports une fois le backend prêt
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-  }, []);
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character] as string));
 
-  const columns = [
-    { key: 'reference', label: 'Référence PV' },
-    { key: 'etudiant', label: 'Étudiant', render: (value: any) => `${value?.nom} ${value?.prenom}` },
-    { key: 'dateHoraire', label: 'Date & Horaire', render: (value: string, row: any) => `${row.defense?.date} · ${row.defense?.heure}` },
-    { key: 'salle', label: 'Salle', render: (value: any) => value?.nom },
-    { key: 'genereLe', label: 'Généré le', render: (value: string) => value || '-' },
-    { key: 'status', label: 'Statut', render: (value: string) => <StatusBadge status={value === 'Généré' ? 'Actif' as any : 'Inactif' as any} /> },
-    { key: 'actions', label: 'Actions', render: (value: any, row: any) => (
-      <div className="flex gap-2">
-        <button 
-          className="text-[#1A4BA8] hover:underline text-sm" 
-          style={{ fontFamily: 'Inter, sans-serif' }}
-          onClick={() => setSelectedReport(row)}
-        >
-          Aperçu
-        </button>
-        <button className="text-[#637799] hover:underline text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-          Télécharger
-        </button>
-      </div>
-    )},
+const PvPage: React.FC<PvPageProps> = ({ initialTab = 'pv' }) => {
+  const { defenseSlots, evaluations, pvs } = useAdminData();
+  const [activeTab, setActiveTab] = useState<'evaluations' | 'results' | 'pv'>(initialTab);
+  const [selectedReport, setSelectedReport] = useState<(typeof pvs)[number] | null>(null);
+  const [feedback, setFeedback] = useState('');
+
+  const evaluationRows = evaluations.map((evaluation) => {
+    const slot = defenseSlots.find((entry) => entry.id === evaluation.defenseId);
+    return {
+      id: evaluation.defenseId,
+      student: slot?.studentName ?? 'Étudiant inconnu',
+      matricule: slot?.studentMatricule ?? '—',
+      total: `${evaluation.totalScore}/20`,
+      status: evaluation.isValidated ? 'Validée' : 'En cours',
+      comments: evaluation.comments,
+    };
+  });
+
+  const resultRows = evaluationRows.map((evaluation) => {
+    const score = Number.parseInt(evaluation.total.split('/')[0], 10);
+    const mention = score >= 16 ? 'Très bien' : score >= 14 ? 'Bien' : score >= 12 ? 'Assez bien' : 'Passable';
+    return { ...evaluation, mention };
+  });
+
+  const pvRows = pvs.map((pv) => {
+    const slot = defenseSlots.find((entry) => entry.id === pv.defenseId);
+    return {
+      ...pv,
+      dateTime: slot ? `${slot.date} · ${slot.timeStart}` : '—',
+      room: slot?.room ?? '—',
+      generatedDate: new Date(pv.generatedAt).toLocaleString('fr-FR'),
+    };
+  });
+
+  const printPv = (pv: (typeof pvs)[number]) => {
+    const popup = window.open('', '_blank', 'width=800,height=650');
+    if (!popup) {
+      setFeedback('La fenêtre d’impression a été bloquée par le navigateur.');
+      return;
+    }
+    const slot = defenseSlots.find((entry) => entry.id === pv.defenseId);
+    const evaluation = evaluations.find((entry) => entry.defenseId === pv.defenseId);
+    popup.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${escapeHtml(pv.reference)}</title>
+      <style>body{font:16px Arial,sans-serif;color:#0A192F;margin:48px}h1{color:#1E3A8A}hr{border:0;border-top:1px solid #cbd5e1}p{line-height:1.6}</style>
+      </head><body><h1>Procès-verbal de soutenance</h1><hr>
+      <p><strong>Référence :</strong> ${escapeHtml(pv.reference)}</p>
+      <p><strong>Étudiant :</strong> ${escapeHtml(pv.studentName)} (${escapeHtml(pv.studentMatricule)})</p>
+      <p><strong>Date et heure :</strong> ${escapeHtml(slot ? `${slot.date} à ${slot.timeStart}` : '—')}</p>
+      <p><strong>Salle :</strong> ${escapeHtml(slot?.room ?? '—')}</p>
+      <p><strong>Note finale :</strong> ${pv.score}/20</p>
+      <p><strong>Présentation :</strong> ${evaluation?.presentationScore ?? '—'}/5 · <strong>Technique :</strong> ${evaluation?.technicalScore ?? '—'}/10 · <strong>Réponses :</strong> ${evaluation?.answersScore ?? '—'}/5</p>
+      <p><strong>Commentaires :</strong> ${escapeHtml(pv.comments || 'Aucun commentaire')}</p>
+      <script>window.onload=()=>window.print()</script></body></html>`);
+    popup.document.close();
+    setFeedback(`Aperçu d’impression ouvert pour ${pv.reference}.`);
+  };
+
+  const exportCsv = () => {
+    const escapeCsv = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const lines = [
+      ['Référence', 'Matricule', 'Étudiant', 'Note /20', 'Généré le'].map(escapeCsv).join(';'),
+      ...pvs.map((pv) => [pv.reference, pv.studentMatricule, pv.studentName, pv.score, pv.generatedAt].map(escapeCsv).join(';')),
+    ];
+    const url = URL.createObjectURL(new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'proces-verbaux.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const tabs = [
+    { id: 'evaluations' as const, label: 'Suivi Évaluations' },
+    { id: 'results' as const, label: 'Résultats Finaux' },
+    { id: 'pv' as const, label: 'Export PV' },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-          Chargement...
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Bannière bleue info */}
-      <div className="bg-[#EAF4FF] border border-[#2D84E0] rounded-lg p-4 flex items-start gap-3">
-        <Info size={20} className="text-[#1A4BA8]" aria-hidden="true" />
-        <div>
-          <p className="font-semibold text-[#1A4BA8]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-            Information
-          </p>
-          <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            PV générés automatiquement après validation des évaluations
-          </p>
-        </div>
+      <div className="flex gap-2">
+        {tabs.map((tab) => (
+          <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`rounded-lg px-4 py-2 font-medium transition-all ${
+            activeTab === tab.id ? 'bg-[#0A192F] text-white' : 'bg-white text-[#637799] hover:bg-[#EAF4FF]'
+          }`}>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <div></div>
-        <div className="flex gap-2">
-          <Button variant="secondary">Tout télécharger</Button>
-          <Button>Générer PV</Button>
-        </div>
-      </div>
+      {feedback && <p role="status" className="rounded-lg bg-[#EFF6FF] p-3 text-sm text-[#1E3A8A]">{feedback}</p>}
 
-      {/* Tableau */}
-      <DataTable columns={columns} data={mockReports} />
+      {activeTab === 'evaluations' && (
+        <DataTable columns={[
+          { key: 'student', label: 'Étudiant' },
+          { key: 'matricule', label: 'Matricule' },
+          { key: 'total', label: 'Note' },
+          { key: 'status', label: 'Statut' },
+          { key: 'comments', label: 'Commentaires' },
+        ]} data={evaluationRows} />
+      )}
 
-      {/* Aperçu document officiel PV */}
+      {activeTab === 'results' && (
+        <DataTable columns={[
+          { key: 'student', label: 'Étudiant' },
+          { key: 'matricule', label: 'Matricule' },
+          { key: 'total', label: 'Moyenne' },
+          { key: 'mention', label: 'Mention' },
+          { key: 'status', label: 'Statut' },
+        ]} data={resultRows} />
+      )}
+
+      {activeTab === 'pv' && (
+        <>
+          <div className="flex items-start gap-3 rounded-lg border border-[#3B82F6] bg-[#EAF4FF] p-4">
+            <Info size={20} className="text-[#1E3A8A]" aria-hidden="true" />
+            <div>
+              <p className="font-semibold text-[#1E3A8A]">Procès-verbaux générés automatiquement</p>
+              <p className="text-sm text-[#637799]">Chaque PV est créé à la validation d’une évaluation. L’impression permet de l’enregistrer au format PDF.</p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button type="button" onClick={exportCsv} disabled={pvs.length === 0} className="rounded-lg bg-[#1E3A8A] px-4 py-2 font-semibold text-white disabled:opacity-50">
+              Exporter la liste (CSV)
+            </button>
+          </div>
+          <DataTable columns={[
+            { key: 'reference', label: 'Référence PV' },
+            { key: 'studentName', label: 'Étudiant' },
+            { key: 'dateTime', label: 'Date & horaire' },
+            { key: 'room', label: 'Salle' },
+            { key: 'score', label: 'Note /20' },
+            { key: 'generatedDate', label: 'Généré le' },
+            { key: 'actions', label: 'Actions', render: (_value, row: (typeof pvRows)[number]) => (
+              <div className="flex gap-3">
+                <button type="button" className="text-[#3B82F6] hover:underline" onClick={() => setSelectedReport(row)}>Aperçu</button>
+                <button type="button" className="text-[#1E3A8A] hover:underline" onClick={() => printPv(row)}>Imprimer / PDF</button>
+              </div>
+            ) },
+          ]} data={pvRows} />
+        </>
+      )}
+
       {selectedReport && (
-        <div className="bg-white rounded-xl border border-[#DDEAF7] p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-              Aperçu PV - {selectedReport.reference}
-            </h3>
-            <Button variant="secondary" onClick={() => setSelectedReport(null)}>
-              Fermer
-            </Button>
-          </div>
-
-          {/* Document stylé */}
-          <div className="border-2 border-[#0D1F4E] rounded-lg p-8 bg-white">
-            {/* En-tête EMIT */}
-            <div className="text-center mb-8 pb-4 border-b border-[#DDEAF7]">
-              <h1 className="text-2xl font-bold text-[#0D1F4E] mb-2" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                ÉCOLE DE MANAGEMENT ET D'INNOVATION TECHNOLOGIQUE
-              </h1>
-              <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                PROCÈS-VERBAL DE SOUTENANCE DE MASTER
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A192F]/50 p-4" role="presentation" onClick={() => setSelectedReport(null)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="pv-preview-title" className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6" onClick={(event) => event.stopPropagation()}>
+            <h2 id="pv-preview-title" className="text-xl font-bold text-[#0A192F]">Aperçu du PV {selectedReport.reference}</h2>
+            <p><strong>Étudiant :</strong> {selectedReport.studentName} ({selectedReport.studentMatricule})</p>
+            <p><strong>Note finale :</strong> {selectedReport.score}/20</p>
+            <p><strong>Commentaires :</strong> {selectedReport.comments || 'Aucun commentaire'}</p>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setSelectedReport(null)} className="rounded-lg px-4 py-2 text-[#637799]">Fermer</button>
+              <button type="button" onClick={() => printPv(selectedReport)} className="rounded-lg bg-[#1E3A8A] px-4 py-2 font-semibold text-white">Imprimer / PDF</button>
             </div>
-
-            {/* Composition jury */}
-            <div className="mb-6">
-              <h3 className="font-bold text-[#0B1D3A] mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                Composition du Jury
-              </h3>
-              <div className="grid grid-cols-3 gap-4 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <div>
-                  <p className="text-[#637799]">Président:</p>
-                  <p className="font-semibold text-[#0B1D3A]">Marc Rasamoelina</p>
-                  <p className="text-[#637799]">Professeur</p>
-                </div>
-                <div>
-                  <p className="text-[#637799]">Rapporteur:</p>
-                  <p className="font-semibold text-[#0B1D3A]">Sophie Rajaonarivelo</p>
-                  <p className="text-[#637799]">Maître de Conférences</p>
-                </div>
-                <div>
-                  <p className="text-[#637799]">Examinateur:</p>
-                  <p className="font-semibold text-[#0B1D3A]">Jean-Pierre Rakotomamonjy</p>
-                  <p className="text-[#637799]">Maître de Conférences</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Notes des 3 membres */}
-            <div className="mb-6">
-              <h3 className="font-bold text-[#0B1D3A] mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                Notes attribuées
-              </h3>
-              <div className="grid grid-cols-3 gap-4 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <div className="bg-[#F0F5FB] p-3 rounded-lg">
-                  <p className="text-[#637799]">Président:</p>
-                  <p className="text-2xl font-bold text-[#1A4BA8]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    16/20
-                  </p>
-                </div>
-                <div className="bg-[#F0F5FB] p-3 rounded-lg">
-                  <p className="text-[#637799]">Rapporteur:</p>
-                  <p className="text-2xl font-bold text-[#1A4BA8]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    15/20
-                  </p>
-                </div>
-                <div className="bg-[#F0F5FB] p-3 rounded-lg">
-                  <p className="text-[#637799]">Examinateur:</p>
-                  <p className="text-2xl font-bold text-[#1A4BA8]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    17/20
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Moyenne et mention */}
-            <div className="mb-6 bg-[#EAF4FF] p-4 rounded-lg border border-[#2D84E0]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Moyenne finale
-                  </p>
-                  <p className="text-3xl font-bold text-[#0D1F4E]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    16/20
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Mention
-                  </p>
-                  <p className="text-2xl font-bold text-[#1A4BA8]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    Très Bien
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Avis du jury */}
-            <div className="mb-6">
-              <h3 className="font-bold text-[#0B1D3A] mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                Avis du Jury
-              </h3>
-              <p className="text-sm text-[#0B1D3A] p-4 bg-[#F0F5FB] rounded-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
-                Le candidat a présenté un travail de qualité supérieure. La maîtrise du sujet est excellente et la présentation orale est claire et structurée. Le jury recommande l'attribution du diplôme avec la mention Très Bien.
-              </p>
-            </div>
-
-            {/* Signature */}
-            <div className="mt-8 pt-4 border-t border-[#DDEAF7]">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-[#637799] mb-8" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Le Président
-                  </p>
-                  <p className="font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    Marc Rasamoelina
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-[#637799] mb-8" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Le Rapporteur
-                  </p>
-                  <p className="font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    Sophie Rajaonarivelo
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-[#637799] mb-8" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    L'Examinateur
-                  </p>
-                  <p className="font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    Jean-Pierre Rakotomamonjy
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          </section>
         </div>
       )}
     </div>

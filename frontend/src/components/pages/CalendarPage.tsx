@@ -1,86 +1,59 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
+import { useAdminData } from '../../context/AdminDataContext';
 
 const CalendarPage: React.FC = () => {
-  const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-  const dates = ['09 Sep', '10 Sep', '11 Sep', '12 Sep', '13 Sep', '14 Sep'];
+  const { session, defenseSlots } = useAdminData();
+  const start = new Date(`${session.startDate}T00:00:00Z`);
+  const end = new Date(`${session.endDate}T00:00:00Z`);
+  const dates: Date[] = [];
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    dates.push(new Date(cursor));
+  }
 
-  const defenses = [
-    { id: 1, etudiant: 'Rakoto Jean', heure: '09:00', salle: 'A101', jour: 0, color: 'bg-[#2D84E0]' },
-    { id: 2, etudiant: 'Rasoa Marie', heure: '14:00', salle: 'Amphi B', jour: 1, color: 'bg-[#1A4BA8]' },
-    { id: 3, etudiant: 'Randria Paul', heure: '10:00', salle: 'C205', jour: 2, color: 'bg-[#2D84E0]' },
-    { id: 4, etudiant: 'Andriamanitra Cécile', heure: '11:00', salle: 'D102', jour: 3, color: 'bg-[#1A4BA8]' },
-    { id: 5, etudiant: 'Rasoarimanana Luc', heure: '15:00', salle: 'A101', jour: 4, color: 'bg-[#2D84E0]' }
-  ];
-
-  const getDefensesForDay = (dayIndex: number) => {
-    return defenses.filter(d => d.jour === dayIndex);
-  };
+  const formatDate = (date: Date) => new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(date);
+  const dateKey = (date: Date) => date.toISOString().slice(0, 10);
 
   return (
-    <div className="space-y-6">
-      {/* Navigation semaine */}
-      <div className="bg-white rounded-xl p-4 border border-[#DDEAF7] shadow-sm">
-        <div className="flex items-center justify-between">
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#F0F5FB] text-[#0B1D3A] rounded-lg text-sm font-medium hover:bg-[#E1E8F0] transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
-            <ChevronLeft size={18} />
-            Semaine précédente
-          </button>
-          <div className="flex items-center gap-2">
-            <CalendarIcon size={20} className="text-[#2D84E0]" />
-            <span className="text-lg font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-              9 - 14 Septembre 2024
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="px-4 py-2 bg-[#2D84E0] text-white rounded-lg text-sm font-medium hover:bg-[#1A4BA8] transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
-              Aujourd'hui
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#F0F5FB] text-[#0B1D3A] rounded-lg text-sm font-medium hover:bg-[#E1E8F0] transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
-              Semaine suivante
-              <ChevronRight size={18} />
-            </button>
-          </div>
+    <div className="space-y-5">
+      <section className="flex items-center gap-3 rounded-xl border border-[#BFDBFE] bg-white p-5">
+        <CalendarDays className="text-[#1E3A8A]" aria-hidden="true" />
+        <div>
+          <h2 className="font-bold text-[#0A192F]">Calendrier des soutenances</h2>
+          <p className="text-sm text-[#475569]">{session.startDate} – {session.endDate} · période officielle immuable</p>
         </div>
-      </div>
+      </section>
 
-      {/* Vue hebdomadaire */}
-      <div className="bg-white rounded-xl border border-[#DDEAF7] shadow-sm overflow-hidden">
-        <div className="grid grid-cols-6 divide-x divide-[#DDEAF7]">
-          {days.map((day, index) => (
-            <div key={day} className="min-h-[500px]">
-              {/* En-tête jour */}
-              <div className="p-4 border-b border-[#DDEAF7] bg-[#F0F5FB]">
-                <p className="text-sm font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                  {day}
-                </p>
-                <p className="text-xs text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  {dates[index]}
-                </p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {dates.map((date) => {
+          const daySlots = defenseSlots
+            .filter((slot) => slot.date === dateKey(date))
+            .sort((left, right) => left.timeStart.localeCompare(right.timeStart));
+          return (
+            <section key={dateKey(date)} className="min-h-64 rounded-xl border border-[#DDEAF7] bg-white">
+              <header className="border-b border-[#DDEAF7] bg-[#F0F5FB] px-4 py-3">
+                <h3 className="font-semibold capitalize text-[#0A192F]">{formatDate(date)}</h3>
+              </header>
+              <div className="space-y-2 p-3">
+                {daySlots.length ? daySlots.map((slot) => (
+                  <article key={slot.id} className="rounded-lg border-l-4 border-[#3B82F6] bg-[#EFF6FF] p-3">
+                    <p className="text-xs font-semibold text-[#1E3A8A]">{slot.timeStart}–{slot.timeEnd} · {slot.room}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0A192F]">{slot.studentName}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-[#475569]">{slot.themeTitle}</p>
+                    <p className="mt-2 text-xs text-[#1E3A8A]">{slot.jury.length ? slot.jury.map((member) => member.teacherName).join(' · ') : 'Jury à affecter'}</p>
+                  </article>
+                )) : (
+                  <p className="py-6 text-center text-sm text-[#94A3B8]">Aucune soutenance planifiée</p>
+                )}
               </div>
-
-              {/* Blocs soutenances */}
-              <div className="p-2 space-y-2">
-                {getDefensesForDay(index).map((defense) => (
-                  <div
-                    key={defense.id}
-                    className={`${defense.color} rounded-lg p-3 text-white`}
-                  >
-                    <p className="text-xs font-semibold mb-1" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                      {defense.heure}
-                    </p>
-                    <p className="text-sm font-medium mb-1" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                      {defense.etudiant}
-                    </p>
-                    <p className="text-xs opacity-90" style={{ fontFamily: 'Inter, sans-serif' }}>
-                      {defense.salle}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

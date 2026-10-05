@@ -12,66 +12,77 @@ import {
   TextInput,
   Modal,
   Pressable,
+  Linking,
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
 import { Ionicons } from '@expo/vector-icons';
-import { juryTabItems, juryTabBadges, JURY_ACCENT_RED } from './juryNavigation';
+import { juryTabItems, juryTabBadges, JURY_ACCENT_BLUE } from './juryNavigation';
+import type { JuryEvaluation } from '../../types/defenseWorkflow';
 
 interface ScreenProps {
   onBack: () => void;
   onEvaluate: () => void;
   onNavigate: (screen: string) => void;
+  onReportIssue: (message: string) => void;
   defense?: {
     studentId: string;
     studentName: string;
+    studentMatricule?: string;
     thesisTitle: string;
     date: string;
     time: string;
     room: string;
     status?: string;
+    director?: string;
+    role?: string;
+    jury?: { name: string; role: string }[];
+    pdfUri?: string;
   };
-  evaluation?: {
-    evaluee: true;
-    average: number;
-    mention: string;
-  };
+  evaluation?: JuryEvaluation;
 }
 
-const DefenseDetailsScreen: React.FC<ScreenProps> = ({ onBack, onEvaluate, onNavigate, defense, evaluation }) => {
+const DefenseDetailsScreen: React.FC<ScreenProps> = ({ onBack, onEvaluate, onNavigate, onReportIssue, defense, evaluation }) => {
   // Données locales (Mock Data) — aucune requête réseau.
   const defenseData = {
     studentName: defense?.studentName ?? 'Alice Martin',
-    studentMatricule: '001M24',
-    date: defense?.date ?? '15 Décembre 2024',
+    studentMatricule: defense?.studentMatricule ?? '001I24',
+    date: defense?.date ?? '11 novembre 2026',
     time: defense?.time ?? '09:00',
     room: defense?.room ?? 'Salle A-101',
-    role: 'Président',
+    role: defense?.role ?? 'Président',
     thesisTitle: defense?.thesisTitle ?? 'Plateforme web de gestion des soutenances à l’EMIT',
-    director: 'Prof. Randriamanana',
+    director: defense?.director ?? 'Prof. Marc Rasamoelina',
   };
-  const juryMembers = [
+  const juryMembers = defense?.jury ?? [
     { role: 'Président', name: 'Prof. Randriamanana' },
     { role: 'Examinateur', name: 'Dr. M. Rakoto' },
     { role: 'Rapporteur', name: 'Dr. L. Andriamihaja' },
   ];
-  const isEvaluated = Boolean(evaluation?.evaluee || defense?.status === 'evaluation_terminee');
+  const isEvaluated = Boolean(evaluation?.status === 'validated' || defense?.status === 'evaluation_terminee');
   const [incidentVisible, setIncidentVisible] = useState(false);
   const [incident, setIncident] = useState('');
-  const [documentVisible, setDocumentVisible] = useState(false);
 
   const submitIncident = () => {
     if (!incident.trim()) {
       Alert.alert('Description requise', 'Décrivez le problème avant de l’envoyer.');
       return;
     }
-    // TODO: remplacer ce mock par l’envoi de la notification à l’administration.
-    console.log('Jury incident reported to administration:', {
-      studentId: defense?.studentId ?? defenseData.studentMatricule,
-      message: incident.trim(),
-    });
+    onReportIssue(incident.trim());
     setIncident('');
     setIncidentVisible(false);
+    Alert.alert('Signalement enregistré', 'Le message est conservé dans cette démonstration locale. Aucun changement de créneau n’a été effectué.');
+  };
+
+  const openSubmission = () => {
+    if (!defense?.pdfUri) {
+      Alert.alert('PDF non disponible', 'Aucun PDF de rédaction n’est associé à cette soutenance dans les données locales.');
+      return;
+    }
+    Linking.openURL(defense.pdfUri).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Le document n’a pas pu être ouvert.';
+      Alert.alert('Ouverture impossible', message);
+    });
   };
 
   return (
@@ -141,9 +152,9 @@ const DefenseDetailsScreen: React.FC<ScreenProps> = ({ onBack, onEvaluate, onNav
             centraliser les convocations et faciliter le suivi des évaluations par les
             membres du jury.
           </Text>
-          <Pressable style={({ pressed }) => [styles.documentButton, pressed && { opacity: 0.8 }]} onPress={() => setDocumentVisible(true)}>
+          <Pressable style={({ pressed }) => [styles.documentButton, pressed && { opacity: 0.8 }]} onPress={openSubmission}>
             <Ionicons name="document-outline" size={18} color={Colors.light.white} />
-            <Text style={styles.documentButtonText}>Consulter la rédaction</Text>
+            <Text style={styles.documentButtonText}>{defense?.pdfUri ? 'Consulter la rédaction PDF' : 'Rédaction PDF non disponible'}</Text>
           </Pressable>
         </View>
         <View style={styles.juryCard}>
@@ -168,7 +179,7 @@ const DefenseDetailsScreen: React.FC<ScreenProps> = ({ onBack, onEvaluate, onNav
           style={({ pressed }) => [styles.reportButton, pressed && { opacity: 0.8 }]}
           onPress={() => setIncidentVisible(true)}
         >
-          <Ionicons name="warning-outline" size={18} color={Colors.light.error} />
+          <Ionicons name="information-circle-outline" size={18} color={Colors.light.sky} />
           <Text style={styles.reportButtonText}>Signaler une indisponibilité ou un problème</Text>
         </Pressable>
       </ScrollView>
@@ -186,27 +197,13 @@ const DefenseDetailsScreen: React.FC<ScreenProps> = ({ onBack, onEvaluate, onNav
         items={juryTabItems}
         activeTab="defenses"
         badges={juryTabBadges}
-        accentColor={JURY_ACCENT_RED}
+        accentColor={JURY_ACCENT_BLUE}
         onTabChange={(tab) => {
           if (tab === 'home') onBack();
           if (tab === 'evaluations') onNavigate('jury-history');
           if (tab === 'profile') onNavigate('jury-profile');
         }}
       />
-      <Modal visible={documentVisible} transparent animationType="slide" onRequestClose={() => setDocumentVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Aperçu du document</Text>
-            <Text style={styles.modalHint}>
-              La rédaction du mémoire sera disponible ici lorsque l’intégration documentaire sera prête.
-            </Text>
-            {/* TODO: remplacer cet aperçu par le document réel. */}
-            <Pressable onPress={() => setDocumentVisible(false)} style={({ pressed }) => [styles.sendButton, pressed && { opacity: 0.8 }]}>
-              <Text style={styles.sendButtonText}>Fermer</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
       <Modal visible={incidentVisible} transparent animationType="slide" onRequestClose={() => setIncidentVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -470,7 +467,7 @@ const styles = StyleSheet.create({
   },
   reportButton: {
     alignItems: 'center',
-    borderColor: Colors.light.error,
+    borderColor: Colors.light.sky,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
@@ -480,7 +477,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   reportButtonText: {
-    color: Colors.light.error,
+    color: Colors.light.primary,
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
     marginLeft: 8,
@@ -523,9 +520,9 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     alignItems: 'center',
-    // Bouton d'annulation : touche rouge (#EF4444).
-    backgroundColor: '#FEE2E2',
-    borderColor: JURY_ACCENT_RED,
+    // Bouton d'annulation : touche bleue (#3B82F6).
+    backgroundColor: '#EFF6FF',
+    borderColor: JURY_ACCENT_BLUE,
     borderRadius: 12,
     borderWidth: 1,
     flex: 1,
@@ -533,7 +530,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   cancelButtonText: {
-    color: JURY_ACCENT_RED,
+    color: JURY_ACCENT_BLUE,
     fontFamily: 'Inter-SemiBold',
   },
   sendButton: {

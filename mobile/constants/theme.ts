@@ -22,7 +22,7 @@ export const Colors = {
     sky: '#2D84E0',
     surface: '#EAF4FF',
     border: '#DDEAF7',
-    error: '#DC2626',
+    error: '#1E3A8A',
     success: '#16A34A',
     placeholder: '#9CA3AF',
     tabIconDefault: '#6B7280',

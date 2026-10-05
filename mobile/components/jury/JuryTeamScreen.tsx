@@ -10,9 +10,10 @@ import {
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
 import { Ionicons } from '@expo/vector-icons';
-import { juryTabItems, JURY_ACCENT_RED } from './juryNavigation';
+import { juryTabItems, JURY_ACCENT_BLUE } from './juryNavigation';
+import { demoDefenses } from '../../types/defenseWorkflow';
 
-interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void }
+interface ScreenProps { onBack: () => void; onNavigate: (screen: string) => void; teacherName: string }
 
 interface JurySession {
   id: string;
@@ -27,48 +28,18 @@ interface JurySession {
   }[];
 }
 
-const JuryTeamScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
-  const jurySessions: JurySession[] = [
-    {
-      id: 'SESSION-001',
-      date: '15 Décembre 2024',
-      time: '09:00',
-      room: 'Salle A-101',
-      studentName: 'Alice Martin',
-      studentId: 'ETU-2024-001',
-      team: [
-        { name: 'Prof. Randriamanana', role: 'Président' },
-        { name: 'Dr. Rasoarimanana', role: 'Rapporteur' },
-        { name: 'Prof. Rakoto', role: 'Examinateur' },
-      ],
-    },
-    {
-      id: 'SESSION-002',
-      date: '15 Décembre 2024',
-      time: '11:30',
-      room: 'Salle B-205',
-      studentName: 'Pierre Leroy',
-      studentId: 'ETU-2024-002',
-      team: [
-        { name: 'Prof. Randriamanana', role: 'Président' },
-        { name: 'Dr. Rasoarimanana', role: 'Rapporteur' },
-        { name: 'Prof. Rakoto', role: 'Examinateur' },
-      ],
-    },
-    {
-      id: 'SESSION-003',
-      date: '16 Décembre 2024',
-      time: '14:00',
-      room: 'Salle C-305',
-      studentName: 'Jean Dupont',
-      studentId: 'ETU-2024-003',
-      team: [
-        { name: 'Prof. Randriamanana', role: 'Président' },
-        { name: 'Dr. Rasoarimanana', role: 'Rapporteur' },
-        { name: 'Prof. Rakoto', role: 'Examinateur' },
-      ],
-    },
-  ];
+const JuryTeamScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, teacherName }) => {
+  const jurySessions: JurySession[] = demoDefenses
+    .filter((defense) => defense.jury.some((member) => member.name === teacherName))
+    .map((defense) => ({
+      id: defense.id,
+      date: defense.date,
+      time: defense.time,
+      room: defense.room,
+      studentName: defense.studentName,
+      studentId: defense.studentMatricule,
+      team: defense.jury,
+    }));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -85,7 +56,7 @@ const JuryTeamScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
                 <Text style={styles.sessionRoom}>{session.room}</Text>
               </View>
               <View style={styles.sessionBadge}>
-                <Ionicons name="people-outline" size={16} color={JURY_ACCENT_RED} />
+                <Ionicons name="people-outline" size={16} color={JURY_ACCENT_BLUE} />
                 <Text style={styles.sessionBadgeText}>{session.team.length} membres</Text>
               </View>
             </View>
@@ -110,7 +81,7 @@ const JuryTeamScreen: React.FC<ScreenProps> = ({ onBack, onNavigate }) => {
       <BottomNav
         items={juryTabItems}
         activeTab="team"
-        accentColor={JURY_ACCENT_RED}
+        accentColor={JURY_ACCENT_BLUE}
         onTabChange={(tab) => {
           if (tab === 'home') onNavigate('jury');
           else if (tab === 'defenses') onNavigate('jury-students');
@@ -171,7 +142,7 @@ const styles = StyleSheet.create({
   sessionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -180,7 +151,7 @@ const styles = StyleSheet.create({
   sessionBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: JURY_ACCENT_RED,
+    color: JURY_ACCENT_BLUE,
     fontFamily: 'Inter-SemiBold',
   },
   teamList: {
