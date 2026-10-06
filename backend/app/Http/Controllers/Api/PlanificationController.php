@@ -54,12 +54,15 @@ class PlanificationController extends Controller
      * Liste les soutenances planifiees (pour le PlanningDashboard du frontend).
      */
     public function index(Request $request)
-    {
-        $soutenances = Soutenance::with(['affectationsJury.enseignant'])
-            ->whereIn('statut', ['planifiee', 'en_cours', 'terminee'])
-            ->orderBy('date_debut')
-            ->get();
+{
+    $query = Soutenance::with(['affectationsJury.enseignant']);
 
-        return response()->json($soutenances);
+    if ($request->has('statut')) {
+        $query->where('statut', $request->statut);
     }
+
+    $soutenances = $query->orderBy('date_debut')->get();
+
+    return response()->json($soutenances);
+}
 }

@@ -1,5 +1,4 @@
 <?php
-// app/Models/AffectationJury.php
 
 namespace App\Models;
 
@@ -25,6 +24,6 @@ class AffectationJury extends Model
 
     public function enseignant()
     {
-        return $this->belongsTo(Enseignant::class);
+        return $this->belongsTo(User::class, 'enseignant_id');
     }
 }

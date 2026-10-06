@@ -36,7 +36,9 @@ const AffectationJurysPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedSoutenanceId) {
-      getAffectations(selectedSoutenanceId).then(setAffectations);
+      getAffectations(selectedSoutenanceId)
+        .then((data) => setAffectations(Array.isArray(data) ? data : []))
+        .catch(() => setAffectations([]));
     } else {
       setAffectations([]);
     }
@@ -111,7 +113,7 @@ const AffectationJurysPage: React.FC = () => {
               >
                 <span>
                   <strong>{ROLES.find((r) => r.value === a.role)?.label}</strong> —{' '}
-                  {a.enseignant?.nom ?? `Enseignant #${a.enseignant_id}`}
+                  {a.enseignant?.name ?? `Enseignant #${a.enseignant_id}`}
                 </span>
                 <button onClick={() => handleRetirer(a.id)} style={{ color: '#ef4444' }}>
                   Retirer
@@ -132,7 +134,7 @@ const AffectationJurysPage: React.FC = () => {
                   <option value="">-- Choisir --</option>
                   {enseignants.map((en) => (
                     <option key={en.id} value={en.id}>
-                      {en.nom} {en.prenom ?? ''}
+                      {en.name} {en.email ?? ''}
                     </option>
                   ))}
                 </select>

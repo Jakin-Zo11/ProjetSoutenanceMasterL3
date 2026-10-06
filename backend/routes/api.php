@@ -20,7 +20,6 @@ use App\Http\Controllers\Api\Student\StudentProfileController;
 use App\Http\Controllers\Api\PlanificationController;
 use App\Http\Controllers\Api\IndisponibiliteController;
 use App\Http\Controllers\Api\AffectationJuryController;
-
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -43,6 +42,9 @@ Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::cla
 Route::get('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'index']);
 Route::post('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'store']);
 Route::delete('/affectation-jury/{affectation}', [AffectationJuryController::class, 'destroy']);
+
+Route::get('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'index']);
+Route::post('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'store']);
 
 // Auth Routes (email + password — admin / jury)
 Route::prefix('v1/auth')->group(function () {

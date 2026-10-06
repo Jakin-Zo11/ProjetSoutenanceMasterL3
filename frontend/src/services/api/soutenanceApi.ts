@@ -31,7 +31,6 @@ export async function planifierSoutenance(
 }
 
 export async function getSoutenancesEnAttente(): Promise<Soutenance[]> {
-  // Cette route EST prefixee v1/admin -> apiClient normal (pas de baseURL override)
-  const response = await apiClient.get<Soutenance[]>('/admin/soutenances');
-  return response.data.filter((s) => s.statut === 'en_attente');
+  const all = await getPlanning();
+  return all.filter((s) => s.statut === 'en_attente');
 }

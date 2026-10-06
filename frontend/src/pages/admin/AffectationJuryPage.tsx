@@ -1,224 +1,179 @@
 import React, { useEffect, useState } from 'react';
-import { Info } from 'lucide-react';
-import { DataTable, Button, StatusBadge } from '../../components/admin';
-import { mockDefenses, mockTeachers } from '../../mocks';
+import { getSoutenancesEnAttente, Soutenance } from '../../services/api/soutenanceApi';
+import { getEnseignants, Enseignant } from '../../services/api/enseignantApi';
+import {
+  getAffectations,
+  affecterJury,
+  retirerAffectation,
+  AffectationJury,
+} from '../../services/api/affectationJuryApi';
 
-const AffectationJuryPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [step, setStep] = useState(1);
-  const [selectedDefense, setSelectedDefense] = useState<number | null>(null);
-  const [selectedPresident, setSelectedPresident] = useState<number | null>(null);
-  const [selectedRapporteur, setSelectedRapporteur] = useState<number | null>(null);
-  const [selectedExaminateur, setSelectedExaminateur] = useState<number | null>(null);
+const ROLES: { value: AffectationJury['role']; label: string }[] = [
+  { value: 'president', label: 'President' },
+  { value: 'rapporteur', label: 'Rapporteur' },
+  { value: 'examinateur', label: 'Examinateur' },
+];
+
+const AffectationJurysPage: React.FC = () => {
+  const [soutenances, setSoutenances] = useState<Soutenance[]>([]);
+  const [enseignants, setEnseignants] = useState<Enseignant[]>([]);
+  const [selectedSoutenanceId, setSelectedSoutenanceId] = useState<number | null>(null);
+  const [affectations, setAffectations] = useState<AffectationJury[]>([]);
+  const [selectedEnseignant, setSelectedEnseignant] = useState<number |''>('');
+  const [selectedRole, setSelectedRole] = useState<AffectationJury['role']>('president');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: connecter à l'API /api/assignment une fois le backend prêt
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
+    Promise.all([getSoutenancesEnAttente(), getEnseignants()])
+      .then(([s, e]) => {
+        setSoutenances(s);
+        setEnseignants(e);
+      })
+      .catch(() => setMessage({ type: 'error', text: 'Erreur de chargement des donnees.' }))
+      .finally(() => setLoading(false));
   }, []);
 
-  const defensesWithoutJury = mockDefenses.filter(d => !d.juryId);
+  useEffect(() => {
+    if (selectedSoutenanceId) {
+      getAffectations(selectedSoutenanceId)
+        .then((data) => setAffectations(Array.isArray(data) ? data : []))
+        .catch(() => setAffectations([]));
+    } else {
+      setAffectations([]);
+    }
+}, [selectedSoutenanceId]);
 
-  const columns = [
-    { key: 'etudiant', label: 'Étudiant', render: (value: any) => `${value?.nom} ${value?.prenom}` },
-    { key: 'sujet', label: 'Sujet', render: (value: string, row: any) => row.student?.sujetThese?.substring(0, 40) + '...' },
-    { key: 'date', label: 'Date' },
-    { key: 'heure', label: 'Heure' },
-    { key: 'salle', label: 'Salle', render: (value: any) => value?.nom },
-    { key: 'actions', label: 'Actions', render: (value: any, row: any) => (
-      <Button onClick={() => { setSelectedDefense(row.id); setStep(2); }}>
-        Affecter jury
-      </Button>
-    )},
-  ];
+  const rolesRestants = ROLES.filter(
+    (r) => !affectations.some((a) => a.role === r.value)
+  );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-          Chargement...
-        </div>
-      </div>
-    );
-  }
+  const handleAffecter = async () => {
+    if (!selectedSoutenanceId || !selectedEnseignant) return;
+    setMessage(null);
+
+    const result = await affecterJury(selectedSoutenanceId, Number(selectedEnseignant), selectedRole);
+
+    if (result.success) {
+      setMessage({ type: 'success', text: 'Enseignant affecte avec succes.' });
+      setSelectedEnseignant('');
+      const updated = await getAffectations(selectedSoutenanceId);
+setAffectations(Array.isArray(updated) ? updated : []);
+    } else {
+      setMessage({ type: 'error', text: result.message ?? 'Erreur lors de l\'affectation.' });
+    }
+  };
+
+  const handleRetirer = async (affectationId: number) => {
+    await retirerAffectation(affectationId);
+    if (selectedSoutenanceId) {
+      const updated = await getAffectations(selectedSoutenanceId);
+      setAffectations(updated);
+    }
+  };
+
+  if (loading) return <p style={{ padding: '1.5rem' }}>Chargement...</p>;
 
   return (
-    <div className="space-y-6">
-      {/* Règle rappelée */}
-      <div className="bg-[#EAF4FF] border border-[#2D84E0] rounded-lg p-4 flex items-start gap-3">
-        <Info size={20} className="text-[#1A4BA8]" aria-hidden="true" />
-        <div>
-          <p className="font-semibold text-[#1A4BA8]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-            Règle d'affectation
-          </p>
-          <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            3 membres minimum par jury (Président, Rapporteur, Examinateur). Des membres supplémentaires peuvent être ajoutés sans doublon sur le même créneau.
-          </p>
-        </div>
-      </div>
+    <div style={{ padding: '1.5rem', maxWidth: '700px' }}>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>
+        Affectation des jurys
+      </h1>
 
-      {/* Stepper */}
-      <div className="bg-white rounded-xl border border-[#DDEAF7] p-6">
-        <div className="flex items-center justify-between mb-8">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  step >= s ? 'bg-[#1A4BA8] text-white' : 'bg-[#F0F5FB] text-[#637799]'
-                }`}
-                style={{ fontFamily: 'Inter, sans-serif' }}
+      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+        Soutenance
+      </label>
+      <select
+        value={selectedSoutenanceId ?? ''}
+        onChange={(e) => setSelectedSoutenanceId(e.target.value ? Number(e.target.value) : null)}
+        style={{ width: '100%', padding: '0.5rem', marginBottom: '1.5rem' }}
+      >
+        <option value="">-- Choisir une soutenance en attente --</option>
+        {soutenances.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.theme ?? `Soutenance #${s.id}`}
+          </option>
+        ))}
+      </select>
+
+      {selectedSoutenanceId && (
+        <>
+          <h2 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Jurysaffectes</h2>
+          {affectations.length === 0 && <p style={{ color: '#64748b' }}>Aucun jury affecte pour l'instant.</p>}
+          <ul style={{ marginBottom: '1.5rem' }}>
+            {affectations.map((a) => (
+              <li
+                key={a.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '0.5rem',
+                  borderBottom: '1px solid #e2e8f0',
+                }}
               >
-                {s}
+                <span>
+                  <strong>{ROLES.find((r) => r.value === a.role)?.label}</strong> â€”{' '}
+                  {a.enseignant?.name ?? `Enseignant #${a.enseignant_id}`}
+                </span>
+                <button onClick={() => handleRetirer(a.id)} style={{ color: '#ef4444' }}>
+                  Retirer
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {rolesRestants.length > 0 ? (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem' }}>Enseignant</label>
+                <select
+                  value={selectedEnseignant}
+                  onChange={(e) => setSelectedEnseignant(e.target.value? Number(e.target.value) : '')}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">-- Choisir --</option>
+                  {enseignants.map((en) => (
+                    <option key={en.id} value={en.id}>
+                      {en.name} {en.email ?? ''}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <span
-                className={`text-sm ${step >= s ? 'text-[#0B1D3A]' : 'text-[#637799]'}`}
-                style={{ fontFamily: 'Inter, sans-serif' }}
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.25rem' }}>Role</label>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as AffectationJury['role'])}
+                  style={{ padding: '0.5rem' }}
+                >
+                  {rolesRestants.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={handleAffecter}
+                disabled={!selectedEnseignant}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6',color: 'white', borderRadius: '0.375rem' }}
               >
-                {s === 1 ? 'Soutenances sans jury' : s === 2 ? 'Sélection des membres' : 'Confirmation'}
-              </span>
+                Affecter
+              </button>
             </div>
-          ))}
-        </div>
+          ) : (
+            <p style={{ color: '#22c55e' }}>Les 3 roles sont deja attribues.</p>
+          )}
+        </>
+      )}
 
-        {/* Étape 1 - Tableau soutenances sans jury */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-              Sélectionnez une soutenance
-            </h3>
-            <DataTable columns={columns} data={defensesWithoutJury} />
-          </div>
-        )}
-
-        {/* Étape 2 - 3 cards avec select */}
-        {step === 2 && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-              Sélectionnez les membres du jury
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Président */}
-              <div className="bg-[#F0F5FB] rounded-lg p-4 border border-[#DDEAF7]">
-                <h4 className="font-semibold text-[#0B1D3A] mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                  Président
-                </h4>
-                <select
-                  value={selectedPresident || ''}
-                  onChange={(e) => setSelectedPresident(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-white border border-[#DDEAF7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D84E0]"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                  <option value="">Sélectionner...</option>
-                  {mockTeachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.nom} {teacher.prenom}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-3">
-                  <StatusBadge status="Actif" />
-                </div>
-              </div>
-
-              {/* Rapporteur */}
-              <div className="bg-[#F0F5FB] rounded-lg p-4 border border-[#DDEAF7]">
-                <h4 className="font-semibold text-[#0B1D3A] mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                  Rapporteur
-                </h4>
-                <select
-                  value={selectedRapporteur || ''}
-                  onChange={(e) => setSelectedRapporteur(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-white border border-[#DDEAF7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D84E0]"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                  <option value="">Sélectionner...</option>
-                  {mockTeachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.nom} {teacher.prenom}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-3">
-                  <StatusBadge status="Actif" />
-                </div>
-              </div>
-
-              {/* Examinateur */}
-              <div className="bg-[#F0F5FB] rounded-lg p-4 border border-[#DDEAF7]">
-                <h4 className="font-semibold text-[#0B1D3A] mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                  Examinateur
-                </h4>
-                <select
-                  value={selectedExaminateur || ''}
-                  onChange={(e) => setSelectedExaminateur(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-white border border-[#DDEAF7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D84E0]"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                  <option value="">Sélectionner...</option>
-                  {mockTeachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.nom} {teacher.prenom}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-3">
-                  <StatusBadge status="Actif" />
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-between mt-6">
-              <Button variant="secondary" onClick={() => setStep(1)}>
-                Précédent
-              </Button>
-              <Button onClick={() => setStep(3)} disabled={!selectedPresident || !selectedRapporteur || !selectedExaminateur}>
-                Suivant
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Étape 3 - Confirmation */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-[#0B1D3A]" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-              Confirmer l'affectation
-            </h3>
-            <div className="bg-[#F0F5FB] rounded-lg p-4 space-y-2">
-              <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <span className="font-semibold text-[#0B1D3A]">Soutenance:</span>{' '}
-                {defensesWithoutJury.find((d) => d.id === selectedDefense)?.student?.nom}{' '}
-                {defensesWithoutJury.find((d) => d.id === selectedDefense)?.student?.prenom}
-              </p>
-              <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <span className="font-semibold text-[#0B1D3A]">Président:</span>{' '}
-                {mockTeachers.find((t) => t.id === selectedPresident)?.nom}{' '}
-                {mockTeachers.find((t) => t.id === selectedPresident)?.prenom}
-              </p>
-              <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <span className="font-semibold text-[#0B1D3A]">Rapporteur:</span>{' '}
-                {mockTeachers.find((t) => t.id === selectedRapporteur)?.nom}{' '}
-                {mockTeachers.find((t) => t.id === selectedRapporteur)?.prenom}
-              </p>
-              <p className="text-sm text-[#637799]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <span className="font-semibold text-[#0B1D3A]">Examinateur:</span>{' '}
-                {mockTeachers.find((t) => t.id === selectedExaminateur)?.nom}{' '}
-                {mockTeachers.find((t) => t.id === selectedExaminateur)?.prenom}
-              </p>
-            </div>
-            <div className="flex justify-between mt-6">
-              <Button variant="secondary" onClick={() => setStep(2)}>
-                Précédent
-              </Button>
-              <Button onClick={() => console.log('Notifier')}>
-                Confirmer et Notifier
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      {message && (
+        <p style={{ marginTop: '1rem', color: message.type === 'error' ? '#ef4444' : '#22c55e' }}>
+          {message.text}
+        </p>
+      )}
     </div>
   );
 };
 
-export default AffectationJuryPage;
+export default AffectationJurysPage;
