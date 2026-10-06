@@ -65,4 +65,47 @@ class PlanificationController extends Controller
 
     return response()->json($soutenances);
 }
+
+    public function conflits()
+{
+    $soutenances = Soutenance::whereNotNull('date_debut')
+        ->whereNotNull('date_fin')
+        ->with(['affectationsJury'])
+        ->get();
+
+    $conflits = [];
+
+    foreach ($soutenances as $i => $a) {
+        foreach ($soutenances as $j => $b) {
+            if ($i >= $j) continue;
+
+            $chevauchent = $a->date_debut < $b->date_fin && $b->date_debut < $a->date_fin;
+            if (!$chevauchent) continue;
+
+            if ($a->salle_id && $a->salle_id === $b->salle_id) {
+                $conflits[] = [
+                    'type' => 'salle',
+                    'soutenance_a' => $a->id,
+                    'soutenance_b' => $b->id,
+                    'detail' => "Meme salle (#{$a->salle_id}) sur creneaux chevauchants",
+                ];
+            }
+
+            $jurysA = $a->affectationsJury->pluck('enseignant_id');
+            $jurysB = $b->affectationsJury->pluck('enseignant_id');
+            $communs = $jurysA->intersect($jurysB);
+
+            foreach ($communs as $enseignantId) {
+                $conflits[] = [
+                    'type' => 'jury',
+                    'soutenance_a' => $a->id,
+                    'soutenance_b' => $b->id,
+                    'detail' => "Enseignant #{$enseignantId} affecte aux deux soutenances sur creneaux chevauchants",
+                ];
+            }
+        }
+    }
+
+    return response()->json($conflits);
+}
 }

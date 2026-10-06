@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Student\StudentProfileController;
 use App\Http\Controllers\Api\PlanificationController;
 use App\Http\Controllers\Api\IndisponibiliteController;
 use App\Http\Controllers\Api\AffectationJuryController;
+use App\Http\Controllers\Api\ConvocationController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -32,6 +33,8 @@ use App\Http\Controllers\Api\AffectationJuryController;
 */
 
 // Planification & convocations (Lauris)
+Route::get('/planning/conflits', [PlanificationController::class, 'conflits']);
+Route::get('/soutenances/{soutenance}/convocation', [ConvocationController::class, 'show']);
 Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
 Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
 Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);

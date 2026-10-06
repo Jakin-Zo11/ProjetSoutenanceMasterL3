@@ -19,6 +19,10 @@ import { GestionIndisponibilitesCalendar } from './pages/enseignant/GestionIndis
 import './App.css';
 import PlanningDashboard from './pages/planification/PlanningDashboard';
 import AffectationJurysPage from './pages/planification/AffectationJurysPage';
+
+import ConvocationPreview from './pages/planification/ConvocationPreview';
+import ReplanificationModal from './pages/planification/ReplanificationModal'; // utilise en modal, pas en route directe
+import DetectionConflitsPanel from './pages/planification/DetectionConflitsPanel';
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -47,6 +51,8 @@ const App: React.FC = () => {
           <Route path="admin/resultats" element={<ResultatsPage />} />
           <Route path="admin/pv" element={<PvPage />} />
           <Route path="admin/planification/affectation-jurys" element={<AffectationJurysPage />} />
+          <Route path="admin/planification/convocation/:id" element={<ConvocationPreview />} />
+          <Route path="admin/planification/conflits" element={<DetectionConflitsPanel />} />
 
           {/* TODO (Lauris) : routes planification a activer une fois les pages codees */}
           <Route path="admin/planification" element={<PlanningDashboard />} />
