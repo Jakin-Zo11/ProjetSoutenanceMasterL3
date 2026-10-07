@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'telephone',
         'matricule',
+        'promotion_id',
         'status',
     ];
 

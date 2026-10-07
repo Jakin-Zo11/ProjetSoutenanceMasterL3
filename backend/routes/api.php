@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 use App\Http\Controllers\Api\Student\StudentAuthController;
 use App\Http\Controllers\Api\Student\StudentProfileController;
+use App\Http\Controllers\Api\Student\StudentPortalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,9 +46,23 @@ Route::prefix('v1/student')->group(function () {
     Route::post('/login', [StudentAuthController::class, 'login']);
 
     // Routes protégées — token Sanctum étudiant
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'role:etudiant'])->group(function () {
         Route::get('/profile', [StudentProfileController::class, 'show']);
         Route::patch('/profile', [StudentProfileController::class, 'update']);
+        Route::post('/logout', [StudentAuthController::class, 'logout']);
+        Route::get('/status', [StudentPortalController::class, 'status']);
+        Route::get('/theme', [StudentPortalController::class, 'showTheme']);
+        Route::post('/theme', [StudentPortalController::class, 'storeTheme']);
+        Route::get('/thesis', [StudentPortalController::class, 'showThesis']);
+        Route::post('/thesis', [StudentPortalController::class, 'storeThesis']);
+        Route::get('/defense', [StudentPortalController::class, 'defense']);
+        Route::get('/convocation', [StudentPortalController::class, 'convocation']);
+        Route::get('/result', [StudentPortalController::class, 'result']);
+        Route::get('/pv', [StudentPortalController::class, 'pv']);
+        Route::get('/deposits/{depot}/file', [StudentPortalController::class, 'downloadDeposit'])
+            ->name('student.deposits.file');
+        Route::get('/notifications', [StudentPortalController::class, 'notifications']);
+        Route::patch('/notifications/{notification}/read', [StudentPortalController::class, 'markNotificationRead']);
     });
 });
 

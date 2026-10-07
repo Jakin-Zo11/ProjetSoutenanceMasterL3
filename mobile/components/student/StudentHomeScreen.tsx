@@ -56,7 +56,7 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
       onSubmitPdf({ name: file.name, uri: file.uri });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Une erreur inattendue est survenue.';
-      Alert.alert('Import impossible', `Le fichier PDF n’a pas pu être sélectionné. ${message}`);
+      Alert.alert('Import impossible', `Le fichier PDF n'a pas pu être sélectionné. ${message}`);
     } finally {
       setIsPickingPdf(false);
     }
@@ -98,11 +98,11 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
           <Text style={styles.themeValue}>
             {student.themeTitle ?? defense?.theme ?? 'Thème non renseigné dans le profil de démonstration.'}
           </Text>
-          <Text style={styles.readOnlyLabel}>Entreprise d’accueil</Text>
+          <Text style={styles.readOnlyLabel}>Entreprise d'accueil</Text>
           <Text style={styles.themeValue}>
             {student.company ?? 'Entreprise non renseignée dans le profil de démonstration.'}
           </Text>
-          <Text style={styles.helper}>Ces informations sont en lecture seule dans l’espace étudiant.</Text>
+          <Text style={styles.helper}>Ces informations sont en lecture seule dans l'espace étudiant.</Text>
         </View>
 
         <View style={styles.card}>
@@ -121,7 +121,7 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
             <View style={styles.successNote}>
               <Ionicons name="checkmark-circle-outline" size={19} color={COLORS.blue} />
               <Text style={styles.successText}>
-                Rédaction enregistrée. Votre convocation sera publiée dès l’affectation des jurys par la scolarité.
+                Rédaction enregistrée. Votre convocation sera publiée dès l'affectation des jurys par la scolarité.
               </Text>
             </View>
           ) : null}
