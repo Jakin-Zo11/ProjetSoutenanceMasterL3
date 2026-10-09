@@ -1,301 +1,514 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
-import type { DefenseDate, DefenseSlot, EvaluationGrid, JuryMember, StudentProfile } from '../types/defense';
-import type { Room, Teacher } from '../types';
-import { mockDefenses, mockRooms, mockStudents, mockTeachers } from '../mocks';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export interface AdminStudent extends StudentProfile {
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface Student {
   id: number;
-  email: string;
+  matricule: string;
+  fullName: string;
+  filiere: string;
   promotion: string;
-  submissionStatus: 'En attente' | 'PDF déposé';
+  themeTitle: string;
+  company?: string;
+  pdfUrl?: string;
+  submissionStatus: 'WAITING' | 'PDF_SUBMITTED' | 'SCHEDULED' | 'EVALUATED';
 }
 
-export interface GeneratedPv {
+export type EvaluatorRole = 'PRESIDENT' | 'RAPPORTEUR' | 'EXAMINER' | 'ENCADREUR';
+
+export interface Teacher {
   id: number;
-  defenseId: number;
-  reference: string;
-  generatedAt: string;
-  studentMatricule: string;
+  prenom: string;
+  nom: string;
+  specialite: string;
+  grade: string;
+  email: string;
+  telephone: string;
+  status: string;
+  isAvailable: boolean;
+  role?: EvaluatorRole;
+}
+
+export interface Planning {
+  id: number;
+  studentId: number;
+  teacherIds: number[];
+  room: string;
+  date: string;
+  slotTime: string;
+  status: string;
+}
+
+export interface Evaluation {
+  id: number;
+  slotId: number;
+  studentId: number;
+  presentationScore: number; // /5
+  technicalScore: number; // /10
+  answersScore: number; // /5
+  totalScore: number; // /20
+  comments: string;
+}
+
+export interface EvaluatorSubmission {
+  role: EvaluatorRole;
+  presentationScore?: number; // /5
+  technicalScore?: number; // /10
+  answersScore?: number; // /5
+  comments?: string;
+  isCompleted: boolean;
+  syncStatus: 'synced' | 'pending' | 'failed';
+  submittedAt?: string;
+}
+
+export interface JuryMember {
+  id: number;
+  teacherName: string;
+  role: EvaluatorRole;
+  isAvailable: boolean;
+}
+
+export interface DefenseSlot {
+  id: number;
+  studentId: number;
   studentName: string;
-  score: number;
-  comments: string;
+  date: string;
+  timeStart: string;
+  timeEnd: string;
+  room: string;
+  status: string;
+  jury: JuryMember[];
 }
 
-export interface AdminNotification {
+export interface Pv {
   id: number;
+  studentMatricule: string;
+  score: number;
+  mention: string;
+  pdfUrl: string;
+}
+
+export interface Session {
+  startDate: string;
+  endDate: string;
+}
+
+export interface TimeSlot {
+  id: number;
+  startTime: string; // Format: HH:mm
+  endTime: string; // Format: HH:mm
+}
+
+export interface Room {
+  id: number;
+  nom: string;
+  capacite: number;
+  batiment: string;
+  equipements: string[];
+  disponible: boolean;
+}
+
+export type AbsenceStatus = 'REPLACED' | 'UNRESOLVED';
+
+export interface EvaluatorAbsence {
+  id: number;
+  teacherId: number;
+  teacherName: string;
+  defenseSlotId: number;
+  studentId: number;
+  studentName: string;
+  date: string;
+  timeStart: string;
+  timeEnd: string;
+  room: string;
+  role: EvaluatorRole;
+  motif: string;
+  declaredAt: string;
+  status: AbsenceStatus;
+  replacementId?: number;
+  replacementName?: string;
+}
+
+export interface TeamNotification {
+  id: number;
+  absenceId: number;
+  title: string;
   message: string;
+  recipients: string[];
   createdAt: string;
-  read: boolean;
 }
 
-interface EvaluationScores {
-  presentationScore: number;
-  technicalScore: number;
-  answersScore: number;
-  comments: string;
+export interface DeclareAbsenceInput {
+  defenseSlotId: number;
+  teacherId: number;
+  motif: string;
 }
 
-interface AdminDataContextValue {
-  session: Readonly<{ startDate: '2026-11-11'; endDate: '2026-11-16' }>;
-  students: AdminStudent[];
+export const EVALUATOR_ROLE_LABELS: Record<EvaluatorRole, string> = {
+  PRESIDENT: 'Président',
+  RAPPORTEUR: 'Rapporteur',
+  EXAMINER: 'Examinateur',
+  ENCADREUR: 'Encadreur',
+};
+
+const toMinutes = (value: string) => {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+interface AdminDataContextType {
+  session: Session;
+  students: Student[];
   teachers: Teacher[];
-  rooms: Room[];
+  plannings: Planning[];
+  evaluations: Evaluation[];
+  pvs: Pv[];
   defenseSlots: DefenseSlot[];
-  evaluations: EvaluationGrid[];
-  pvs: GeneratedPv[];
-  notifications: AdminNotification[];
-  uploadStudentPdf: (matricule: string, pdfUrl: string) => Promise<void>;
+  timeSlots: TimeSlot[];
+  rooms: Room[];
+  absences: EvaluatorAbsence[];
+  notifications: TeamNotification[];
+  assignJuryToSlot: (slotId: number, juryIds: number[]) => void;
+  replaceJuryMember: (slotId: number, oldTeacherId: number, newTeacherId: number) => void;
+  uploadStudentPdf: (matricule: string, fileUrl: string) => Promise<void>;
+  submitEvaluation: (slotId: number, scoreData: Omit<Evaluation, 'id'>) => void;
   addTeacher: (teacher: Omit<Teacher, 'id'>) => Promise<void>;
+  updateTeacher: (id: number, teacher: Partial<Omit<Teacher, 'id'>>) => Promise<void>;
+  deleteTeacher: (id: number) => Promise<void>;
+  addTimeSlot: (timeSlot: Omit<TimeSlot, 'id'>) => Promise<void>;
+  updateTimeSlot: (id: number, timeSlot: Partial<Omit<TimeSlot, 'id'>>) => Promise<void>;
+  deleteTimeSlot: (id: number) => Promise<void>;
   addRoom: (room: Omit<Room, 'id'>) => Promise<void>;
-  assignJuryBatch: (slotIds: number[], juryMembers: JuryMember[]) => Promise<void>;
-  replaceJuryMember: (slotId: number, oldTeacherId: number, newTeacherId: number) => Promise<void>;
-  submitEvaluation: (defenseId: number, scores: EvaluationScores) => Promise<void>;
+  addDefenseSlot: (slot: Omit<DefenseSlot, 'id'>) => Promise<void>;
+  updateDefenseSlot: (id: number, slot: Partial<Omit<DefenseSlot, 'id'>>) => Promise<void>;
+  sendConvocations: (slotId: number) => Promise<void>;
+  assignJuryBatch: (slotIds: number[], members: JuryMember[]) => Promise<void>;
+  declareAbsence: (input: DeclareAbsenceInput) => Promise<EvaluatorAbsence>;
 }
 
-const SESSION = Object.freeze({
-  startDate: '2026-11-11' as const,
-  endDate: '2026-11-16' as const,
-});
+// ─── Context ───────────────────────────────────────────────────────────────────
 
-const INITIAL_EVALUATION: EvaluationGrid = {
-  defenseId: mockDefenses[1].id,
-  presentationScore: 4,
-  technicalScore: 8,
-  answersScore: 4,
-  totalScore: 16,
-  comments: 'Très bonne maîtrise du sujet et présentation claire.',
-  isValidated: true,
-};
+const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined);
 
-const INITIAL_PV: GeneratedPv = {
-  id: 1,
-  defenseId: INITIAL_EVALUATION.defenseId,
-  reference: 'PV-2026-001',
-  generatedAt: '2026-11-12T12:00:00.000Z',
-  studentMatricule: mockStudents[1].matricule,
-  studentName: `${mockStudents[1].prenom} ${mockStudents[1].nom}`,
-  score: INITIAL_EVALUATION.totalScore,
-  comments: INITIAL_EVALUATION.comments,
-};
+// ─── Provider ───────────────────────────────────────────────────────────────
 
-const waitForLocalValidation = () => new Promise<void>((resolve) => setTimeout(resolve, 200));
-
-function getTimeEnd(start: string, duration: number): string {
-  const [hours, minutes] = start.split(':').map(Number);
-  const end = hours * 60 + minutes + duration;
-  return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+interface AdminDataProviderProps {
+  children: ReactNode;
 }
 
-function toDefenseDate(value: string): DefenseDate {
-  const allowedDates: DefenseDate[] = [
-    '2026-11-11', '2026-11-12', '2026-11-13',
-    '2026-11-14', '2026-11-15', '2026-11-16',
-  ];
-  if (!allowedDates.includes(value as DefenseDate)) {
-    throw new Error(`La date de soutenance ${value} est hors de la session autorisée.`);
-  }
-  return value as DefenseDate;
-}
-
-function createInitialStudents(): AdminStudent[] {
-  return mockStudents.map((student) => ({
-    id: student.id,
-    matricule: student.matricule,
-    fullName: `${student.prenom} ${student.nom}`,
-    filiere: student.formation,
-    themeTitle: student.sujetThese,
-    company: 'Entreprise non renseignée',
-    email: student.email,
-    promotion: student.promotion,
-    pdfUrl: student.pdfUrl,
-    submissionStatus: student.pdfUrl ? 'PDF déposé' : 'En attente',
-  }));
-}
-
-function createInitialSlots(students: AdminStudent[]): DefenseSlot[] {
-  return mockDefenses.map((defense) => {
-    const student = students.find((candidate) => candidate.id === defense.studentId);
-    if (!student) throw new Error(`Étudiant manquant pour la soutenance ${defense.id}.`);
-
-    const jury: JuryMember[] = defense.jury
-      ? [
-          { id: defense.jury.presidentId, teacherName: `${defense.jury.president?.prenom ?? ''} ${defense.jury.president?.nom ?? ''}`.trim(), role: 'PRESIDENT', isAvailable: true },
-          { id: defense.jury.rapporteurId, teacherName: `${defense.jury.rapporteur?.prenom ?? ''} ${defense.jury.rapporteur?.nom ?? ''}`.trim(), role: 'RAPPORTEUR', isAvailable: true },
-          { id: defense.jury.examinateurId, teacherName: `${defense.jury.examinateur?.prenom ?? ''} ${defense.jury.examinateur?.nom ?? ''}`.trim(), role: 'EXAMINER', isAvailable: true },
-        ]
-      : [];
-
-    const seededEvaluation = defense.id === INITIAL_EVALUATION.defenseId ? INITIAL_EVALUATION : undefined;
-    return {
-      id: defense.id,
-      studentMatricule: student.matricule,
-      studentName: student.fullName,
-      themeTitle: student.themeTitle,
-      pdfUrl: student.pdfUrl ?? '',
-      date: toDefenseDate(defense.date),
-      timeStart: defense.heure,
-      timeEnd: getTimeEnd(defense.heure, defense.duree),
-      room: defense.room?.nom ?? 'Salle à attribuer',
-      jury,
-      status: seededEvaluation
-        ? 'COMPLETED'
-        : jury.length ? 'SCHEDULED' : student.pdfUrl ? 'SUBMITTED' : 'PENDING_SUBMISSION',
-      ...(seededEvaluation ? { finalScore: seededEvaluation.totalScore, pvUrl: `#${INITIAL_PV.reference}` } : {}),
-    };
+export const AdminDataProvider: React.FC<AdminDataProviderProps> = ({ children }) => {
+  const [session] = useState<Session>({
+    startDate: '2026-11-11',
+    endDate: '2026-11-16',
   });
-}
 
-const AdminDataContext = createContext<AdminDataContextValue | null>(null);
+  const [students, setStudents] = useState<Student[]>([
+    {
+      id: 1,
+      matricule: '001I26',
+      fullName: 'Jean Rakoto',
+      filiere: 'Master 2 Informatique de Gestion',
+      promotion: '2025-2026',
+      themeTitle: 'Optimisation des algorithmes de machine learning pour la prédiction de la demande énergétique',
+      company: 'EMIT',
+      pdfUrl: undefined,
+      submissionStatus: 'WAITING',
+    },
+    {
+      id: 2,
+      matricule: '002I26',
+      fullName: 'Marie Randrianasolo',
+      filiere: 'Master 2 Informatique de Gestion',
+      promotion: '2025-2026',
+      themeTitle: 'Développement d\'une application mobile de gestion des stocks pour les PME',
+      company: 'Tech Solutions',
+      pdfUrl: undefined,
+      submissionStatus: 'WAITING',
+    },
+    {
+      id: 3,
+      matricule: '003I26',
+      fullName: 'Paul Ravelonarivo',
+      filiere: 'Master 2 Informatique de Gestion',
+      promotion: '2025-2026',
+      themeTitle: 'Analyse des données de trafic routier pour l\'optimisation urbaine',
+      company: 'City Planning',
+      pdfUrl: undefined,
+      submissionStatus: 'WAITING',
+    },
+    {
+      id: 4,
+      matricule: '004I26',
+      fullName: 'Fara Rasoa',
+      filiere: 'Master 2 Informatique de Gestion',
+      promotion: '2025-2026',
+      themeTitle: 'Système de reconnaissance faciale pour le contrôle d\'accès',
+      company: 'SecureTech',
+      pdfUrl: '/mock-files/pv-004I26.pdf',
+      submissionStatus: 'PDF_SUBMITTED',
+    },
+    {
+      id: 5,
+      matricule: '005I26',
+      fullName: 'Luc Andriamanitra',
+      filiere: 'Master 2 Informatique de Gestion',
+      promotion: '2025-2026',
+      themeTitle: 'Plateforme e-learning adaptative basée sur l\'IA',
+      company: 'AI Solutions',
+      pdfUrl: '/mock-files/pv-005I26.pdf',
+      submissionStatus: 'PDF_SUBMITTED',
+    },
+  ]);
 
-export const AdminDataProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const [students, setStudents] = useState(createInitialStudents);
-  const [teachers, setTeachers] = useState<Teacher[]>(mockTeachers);
-  const [rooms, setRooms] = useState<Room[]>(mockRooms);
-  const [defenseSlots, setDefenseSlots] = useState<DefenseSlot[]>(() => createInitialSlots(students));
-  const [evaluations, setEvaluations] = useState<EvaluationGrid[]>([INITIAL_EVALUATION]);
-  const [pvs, setPvs] = useState<GeneratedPv[]>([INITIAL_PV]);
-  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([
+    { id: 1, prenom: 'Marc', nom: 'Rasamoelina', specialite: 'Informatique', grade: 'Professeur', email: 'marc.rasamoelina@emit.mg', telephone: '+261 34 00 000 01', status: 'Actif', isAvailable: true, role: 'PRESIDENT' },
+    { id: 2, prenom: 'Sophie', nom: 'Rajaonarivelo', specialite: 'Informatique', grade: 'Maître de conférences', email: 'sophie.rajaonarivelo@emit.mg', telephone: '+261 34 00 000 02', status: 'Actif', isAvailable: true, role: 'RAPPORTEUR' },
+    { id: 3, prenom: 'Jean-Pierre', nom: 'Rakotomamonjy', specialite: 'Informatique', grade: 'Professeur', email: 'jean-pierre.rakotomamonjy@emit.mg', telephone: '+261 34 00 000 03', status: 'Actif', isAvailable: true, role: 'EXAMINER' },
+    { id: 4, prenom: 'Marie', nom: 'Randria', specialite: 'Gestion', grade: 'Maître de conférences', email: 'marie.randria@emit.mg', telephone: '+261 34 00 000 04', status: 'Actif', isAvailable: false, role: 'ENCADREUR' },
+    { id: 5, prenom: 'Naina', nom: 'Rakotoson', specialite: 'Informatique', grade: 'Professeur', email: 'naina.rakotoson@emit.mg', telephone: '+261 34 00 000 05', status: 'Actif', isAvailable: true, role: 'PRESIDENT' },
+    { id: 6, prenom: 'Hery', nom: 'Andrianina', specialite: 'Informatique', grade: 'Maître de conférences', email: 'hery.andrianina@emit.mg', telephone: '+261 34 00 000 06', status: 'Actif', isAvailable: true, role: 'RAPPORTEUR' },
+    { id: 7, prenom: 'Fanja', nom: 'Rasolo', specialite: 'Gestion', grade: 'Maître de conférences', email: 'fanja.rasolo@emit.mg', telephone: '+261 34 00 000 07', status: 'Actif', isAvailable: true, role: 'EXAMINER' },
+    { id: 8, prenom: 'Tiana', nom: 'Rajaona', specialite: 'Informatique', grade: 'Professeur', email: 'tiana.rajaona@emit.mg', telephone: '+261 34 00 000 08', status: 'Actif', isAvailable: true, role: 'ENCADREUR' },
+  ]);
 
-  const value = useMemo<AdminDataContextValue>(() => ({
-    session: SESSION,
+  const [plannings, setPlannings] = useState<Planning[]>([
+    {
+      id: 1,
+      studentId: 1,
+      teacherIds: [1, 2, 3],
+      room: 'Salle A-101',
+      date: '2026-11-11',
+      slotTime: '09:00',
+      status: 'SCHEDULED',
+    },
+    {
+      id: 2,
+      studentId: 2,
+      teacherIds: [2, 3, 4],
+      room: 'Salle B-205',
+      date: '2026-11-11',
+      slotTime: '10:30',
+      status: 'SCHEDULED',
+    },
+  ]);
+
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+
+  const [pvs, setPvs] = useState<Pv[]>([
+    {
+      id: 1,
+      studentMatricule: '004I26',
+      score: 16,
+      mention: 'Très Bien',
+      pdfUrl: '/mock-files/pv-004I26.pdf',
+    },
+  ]);
+
+  const [defenseSlots, setDefenseSlots] = useState<DefenseSlot[]>([
+    {
+      id: 1,
+      studentId: 1,
+      studentName: 'Jean Rakoto',
+      date: '2026-11-11',
+      timeStart: '09:00',
+      timeEnd: '10:30',
+      room: 'Salle A-101',
+      status: 'SCHEDULED',
+      jury: [
+        { id: 1, teacherName: 'Marc Rasamoelina', role: 'PRESIDENT', isAvailable: true },
+        { id: 2, teacherName: 'Sophie Rajaonarivelo', role: 'RAPPORTEUR', isAvailable: true },
+        { id: 3, teacherName: 'Jean-Pierre Rakotomamonjy', role: 'EXAMINER', isAvailable: true },
+      ],
+    },
+    {
+      id: 2,
+      studentId: 2,
+      studentName: 'Marie Randrianasolo',
+      date: '2026-11-11',
+      timeStart: '10:30',
+      timeEnd: '12:00',
+      room: 'Salle B-205',
+      status: 'SCHEDULED',
+      jury: [
+        { id: 2, teacherName: 'Sophie Rajaonarivelo', role: 'PRESIDENT', isAvailable: true },
+        { id: 3, teacherName: 'Jean-Pierre Rakotomamonjy', role: 'RAPPORTEUR', isAvailable: true },
+        { id: 4, teacherName: 'Marie Randria', role: 'EXAMINER', isAvailable: false },
+      ],
+    },
+  ]);
+
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
+    { id: 1, startTime: '08:00', endTime: '10:00' },
+    { id: 2, startTime: '10:15', endTime: '12:15' },
+    { id: 3, startTime: '13:30', endTime: '15:30' },
+    { id: 4, startTime: '15:45', endTime: '17:45' },
+  ]);
+
+  const [rooms, setRooms] = useState<Room[]>([
+    { id: 1, nom: 'Salle A-101', capacite: 40, batiment: 'Bâtiment A', equipements: ['Vidéoprojecteur', 'Tableau'], disponible: true },
+    { id: 2, nom: 'Salle B-205', capacite: 30, batiment: 'Bâtiment B', equipements: ['Vidéoprojecteur'], disponible: true },
+    { id: 3, nom: 'Amphi C', capacite: 120, batiment: 'Bâtiment C', equipements: ['Vidéoprojecteur', 'Sono'], disponible: false },
+  ]);
+
+  const assignJuryToSlot = (slotId: number, juryIds: number[]) => {
+    setPlannings(prev =>
+      prev.map(plan =>
+        plan.id === slotId ? { ...plan, teacherIds: juryIds } : plan
+      )
+    );
+  };
+
+  const replaceJuryMember = (slotId: number, oldTeacherId: number, newTeacherId: number) => {
+    setPlannings(prev =>
+      prev.map(plan =>
+        plan.id === slotId
+          ? { ...plan, teacherIds: plan.teacherIds.map(id => id === oldTeacherId ? newTeacherId : id) }
+          : plan
+      )
+    );
+  };
+
+  const uploadStudentPdf = async (matricule: string, fileUrl: string) => {
+    setStudents(prev =>
+      prev.map(student =>
+        student.matricule === matricule
+          ? { ...student, pdfUrl: fileUrl, submissionStatus: 'PDF_SUBMITTED' }
+          : student
+      )
+    );
+  };
+
+  const submitEvaluation = (slotId: number, scoreData: Omit<Evaluation, 'id'>) => {
+    const totalScore = scoreData.presentationScore + scoreData.technicalScore + scoreData.answersScore;
+    const mention = totalScore >= 16 ? 'Très Bien' : totalScore >= 14 ? 'Bien' : totalScore >= 12 ? 'Assez Bien' : 'Passable';
+    
+    const newEvaluation: Evaluation = {
+      id: Date.now(),
+      slotId,
+      studentId: plannings.find(p => p.id === slotId)?.studentId || 0,
+      ...scoreData,
+      totalScore,
+    };
+
+    setEvaluations(prev => [...prev, newEvaluation]);
+
+    // Générer automatiquement le PV
+    const planning = plannings.find(p => p.id === slotId);
+    const student = students.find(s => s.id === planning?.studentId);
+    if (student) {
+      const newPv: Pv = {
+        id: Date.now(),
+        studentMatricule: student.matricule,
+        score: totalScore,
+        mention,
+        pdfUrl: `/mock-files/pv-${student.matricule}.pdf`,
+      };
+      setPvs(prev => [...prev, newPv]);
+    }
+  };
+
+  const addTeacher = async (teacher: Omit<Teacher, 'id'>) => {
+    const newTeacher: Teacher = {
+      ...teacher,
+      id: Date.now(),
+    };
+    setTeachers(prev => [...prev, newTeacher]);
+  };
+
+  const updateTeacher = async (id: number, teacher: Partial<Omit<Teacher, 'id'>>) => {
+    setTeachers(prev => prev.map(entry => entry.id === id ? { ...entry, ...teacher } : entry));
+  };
+
+  const deleteTeacher = async (id: number) => {
+    setTeachers(prev => prev.filter(entry => entry.id !== id));
+    setDefenseSlots(prev => prev.map(slot => ({
+      ...slot,
+      jury: slot.jury.filter(member => member.id !== id),
+    })));
+    setPlannings(prev => prev.map(plan => ({
+      ...plan,
+      teacherIds: plan.teacherIds.filter(teacherId => teacherId !== id),
+    })));
+  };
+
+  const assignJuryBatch = async (slotIds: number[], members: JuryMember[]) => {
+    setDefenseSlots(prev =>
+      prev.map(slot =>
+        slotIds.includes(slot.id)
+          ? { ...slot, jury: members, status: 'SCHEDULED' }
+          : slot
+      )
+    );
+  };
+
+  const addTimeSlot = async (timeSlot: Omit<TimeSlot, 'id'>) => {
+    setTimeSlots(prev => [...prev, { ...timeSlot, id: Date.now() }]);
+  };
+
+  const updateTimeSlot = async (id: number, timeSlot: Partial<Omit<TimeSlot, 'id'>>) => {
+    setTimeSlots(prev => prev.map(entry => entry.id === id ? { ...entry, ...timeSlot } : entry));
+  };
+
+  const deleteTimeSlot = async (id: number) => {
+    setTimeSlots(prev => prev.filter(entry => entry.id !== id));
+  };
+
+  const addRoom = async (room: Omit<Room, 'id'>) => {
+    setRooms(prev => [...prev, { ...room, id: Date.now() }]);
+  };
+
+  const addDefenseSlot = async (slot: Omit<DefenseSlot, 'id'>) => {
+    setDefenseSlots(prev => [...prev, { ...slot, id: Date.now() }]);
+  };
+
+  const updateDefenseSlot = async (id: number, slot: Partial<Omit<DefenseSlot, 'id'>>) => {
+    setDefenseSlots(prev => prev.map(entry => entry.id === id ? { ...entry, ...slot } : entry));
+  };
+
+  const sendConvocations = async (_slotId: number) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  };
+
+  const value: AdminDataContextType = {
+    session,
     students,
     teachers,
-    rooms,
-    defenseSlots,
+    plannings,
     evaluations,
     pvs,
-    notifications,
-    uploadStudentPdf: async (matricule, pdfUrl) => {
-      if (!pdfUrl.trim()) throw new Error('Le fichier PDF est obligatoire.');
-      const student = students.find((entry) => entry.matricule === matricule);
-      if (!student) throw new Error(`Aucun étudiant trouvé pour le matricule ${matricule}.`);
-      await waitForLocalValidation();
-      const submissionDate = new Date().toISOString();
-      setStudents((current) => current.map((entry) => entry.matricule === matricule
-        ? { ...entry, pdfUrl, submissionDate, submissionStatus: 'PDF déposé' }
-        : entry));
-      setDefenseSlots((current) => current.map((slot) => slot.studentMatricule === matricule
-        ? { ...slot, pdfUrl, status: slot.jury.length ? 'SCHEDULED' : 'SUBMITTED' }
-        : slot));
-    },
-    addTeacher: async (teacher) => {
-      if (!teacher.nom.trim() || !teacher.prenom.trim()) throw new Error('Le nom et le prénom sont obligatoires.');
-      await waitForLocalValidation();
-      setTeachers((current) => [...current, { ...teacher, id: Math.max(0, ...current.map((item) => item.id)) + 1 }]);
-    },
-    addRoom: async (room) => {
-      if (!room.nom.trim()) throw new Error('Le nom de la salle est obligatoire.');
-      await waitForLocalValidation();
-      setRooms((current) => [...current, { ...room, id: Math.max(0, ...current.map((item) => item.id)) + 1 }]);
-    },
-    assignJuryBatch: async (slotIds, juryMembers) => {
-      const roles = juryMembers.map((member) => member.role);
-      if (juryMembers.length !== 3 || new Set(roles).size !== 3
-        || !(['PRESIDENT', 'RAPPORTEUR', 'EXAMINER'] as const).every((role) => roles.includes(role))) {
-        throw new Error('Un jury doit comprendre un président, un rapporteur et un examinateur distincts.');
-      }
-      if (new Set(juryMembers.map((member) => member.id)).size !== juryMembers.length) {
-        throw new Error('Un enseignant ne peut occuper plusieurs rôles dans le même jury.');
-      }
-      const selectedSlots = defenseSlots.filter((slot) => slotIds.includes(slot.id));
-      if (selectedSlots.length !== slotIds.length || selectedSlots.some((slot) => slot.status === 'COMPLETED')) {
-        throw new Error('Un créneau sélectionné est introuvable ou déjà clôturé.');
-      }
-      if (selectedSlots.some((slot) => !slot.pdfUrl)) {
-        throw new Error('Seuls les étudiants ayant déposé leur PDF peuvent être planifiés.');
-      }
-      await waitForLocalValidation();
-      setDefenseSlots((current) => current.map((slot) => slotIds.includes(slot.id)
-        ? { ...slot, jury: juryMembers, status: 'SCHEDULED' }
-        : slot));
-    },
-    replaceJuryMember: async (slotId, oldTeacherId, newTeacherId) => {
-      const slot = defenseSlots.find((entry) => entry.id === slotId);
-      const replacement = teachers.find((teacher) => teacher.id === newTeacherId);
-      if (!slot || !replacement) throw new Error('Le créneau ou l’enseignant remplaçant est introuvable.');
-      if (replacement.status !== 'Actif' || !replacement.isAvailable) {
-        throw new Error('L’enseignant sélectionné n’est pas disponible.');
-      }
-      if (slot.status === 'COMPLETED') throw new Error('Une soutenance terminée ne peut plus être modifiée.');
-      const member = slot.jury.find((entry) => entry.id === oldTeacherId);
-      if (!member) throw new Error('Le juré à remplacer ne fait pas partie de ce jury.');
-      if (slot.jury.some((entry) => entry.id === newTeacherId)) {
-        throw new Error('Cet enseignant est déjà membre de ce jury.');
-      }
-      const slotStart = slot.timeStart.split(':').map(Number).reduce((total, part, index) => total + part * (index === 0 ? 60 : 1), 0);
-      const slotEnd = slot.timeEnd.split(':').map(Number).reduce((total, part, index) => total + part * (index === 0 ? 60 : 1), 0);
-      const conflict = defenseSlots.some((other) => other.id !== slotId
-        && other.date === slot.date
-        && other.jury.some((otherMember) => otherMember.id === newTeacherId)
-        && slotStart < other.timeEnd.split(':').map(Number).reduce((total, part, index) => total + part * (index === 0 ? 60 : 1), 0)
-        && other.timeStart.split(':').map(Number).reduce((total, part, index) => total + part * (index === 0 ? 60 : 1), 0) < slotEnd);
-      if (conflict) throw new Error('Cet enseignant est déjà affecté sur un créneau qui chevauche celui-ci.');
-      await waitForLocalValidation();
-      const replacementMember: JuryMember = {
-        id: replacement.id,
-        teacherName: `${replacement.prenom} ${replacement.nom}`,
-        role: member.role,
-        isAvailable: replacement.isAvailable,
-      };
-      setDefenseSlots((current) => current.map((entry) => entry.id === slotId
-        ? { ...entry, jury: entry.jury.map((juryMember) => juryMember.id === oldTeacherId ? replacementMember : juryMember), status: 'ABSENT_REPLACED' }
-        : entry));
-      setNotifications((current) => [{
-        id: Date.now(),
-        message: `Remplacement attribué pour le ${slot.date} à ${slot.timeStart} : ${replacementMember.teacherName}.`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      }, ...current]);
-    },
-    submitEvaluation: async (defenseId, scores) => {
-      const slot = defenseSlots.find((entry) => entry.id === defenseId);
-      if (!slot) throw new Error('Créneau de soutenance introuvable.');
-      if (!slot.jury.length) throw new Error('Aucun jury n’est affecté à ce créneau.');
-      if (slot.status === 'COMPLETED' || evaluations.some((entry) => entry.defenseId === defenseId)) {
-        throw new Error('Cette soutenance a déjà été évaluée.');
-      }
-      if (scores.presentationScore < 0 || scores.presentationScore > 5
-        || scores.technicalScore < 0 || scores.technicalScore > 10
-        || scores.answersScore < 0 || scores.answersScore > 5) {
-        throw new Error('Les notes doivent respecter les barèmes /5, /10 et /5.');
-      }
-      await waitForLocalValidation();
-      const totalScore = scores.presentationScore + scores.technicalScore + scores.answersScore;
-      const evaluation: EvaluationGrid = {
-        defenseId,
-        ...scores,
-        totalScore,
-        isValidated: true,
-      };
-      const pv: GeneratedPv = {
-        id: Date.now(),
-        defenseId,
-        reference: `PV-2026-${String(pvs.length + 1).padStart(3, '0')}`,
-        generatedAt: new Date().toISOString(),
-        studentMatricule: slot.studentMatricule,
-        studentName: slot.studentName,
-        score: totalScore,
-        comments: scores.comments,
-      };
-      setEvaluations((current) => [...current, evaluation]);
-      setDefenseSlots((current) => current.map((entry) => entry.id === defenseId
-        ? { ...entry, status: 'COMPLETED', finalScore: totalScore, pvUrl: `#${pv.reference}` }
-        : entry));
-      setPvs((current) => [...current, pv]);
-      setNotifications((current) => [{
-        id: Date.now() + 1,
-        message: `Résultat publié pour ${slot.studentName} : ${totalScore}/20. Le PV ${pv.reference} est disponible.`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      }, ...current]);
-    },
-  }), [students, teachers, rooms, defenseSlots, evaluations, pvs, notifications]);
+    defenseSlots,
+    timeSlots,
+    rooms,
+    assignJuryToSlot,
+    replaceJuryMember,
+    uploadStudentPdf,
+    submitEvaluation,
+    addTeacher,
+    updateTeacher,
+    deleteTeacher,
+    addTimeSlot,
+    updateTimeSlot,
+    deleteTimeSlot,
+    addRoom,
+    addDefenseSlot,
+    updateDefenseSlot,
+    sendConvocations,
+    assignJuryBatch,
+  };
 
-  return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;
+  return (
+    <AdminDataContext.Provider value={value}>
+      {children}
+    </AdminDataContext.Provider>
+  );
 };
 
-export function useAdminData(): AdminDataContextValue {
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export const useAdminData = (): AdminDataContextType => {
   const context = useContext(AdminDataContext);
-  if (!context) throw new Error('useAdminData doit être utilisé dans AdminDataProvider.');
+  if (!context) {
+    throw new Error('useAdminData must be used within AdminDataProvider');
+  }
   return context;
-}
+};

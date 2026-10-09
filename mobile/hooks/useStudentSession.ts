@@ -8,6 +8,7 @@
 
 import { useCallback, useState } from 'react';
 import type { StudentProfile } from '../types/etudiant';
+import { logoutStudent } from '../services/studentApi';
 
 export interface StudentPdfSubmission {
   studentMatricule: string;
@@ -39,8 +40,9 @@ export function useStudentSession() {
 
   const getPdfSubmission = useCallback((matricule: string) => pdfSubmissions[matricule] ?? null, [pdfSubmissions]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setStudent(null);
+    await logoutStudent();
   }, []);
 
   return {

@@ -4,88 +4,34 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
-    /**
-     * Afficher la liste des logs d'activité avec pagination et filtres.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        try {
-            $query = ActivityLog::with('user');
+        $filters = $request->validate([
+            'user_id' => ['sometimes', 'integer', 'exists:users,id'],
+            'action' => ['sometimes', 'string', 'max:255'],
+            'date_from' => ['sometimes', 'date'],
+            'date_to' => ['sometimes', 'date'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
 
-            // Filtre par utilisateur
-            if ($request->has('user_id')) {
-                $query->where('user_id', $request->user_id);
-            }
+        $logs = ActivityLog::with('user')
+            ->when(isset($filters['user_id']), fn ($query) => $query->where('user_id', $filters['user_id']))
+            ->when(isset($filters['action']), fn ($query) => $query->where('action', 'like', '%' . $filters['action'] . '%'))
+            ->when(isset($filters['date_from']), fn ($query) => $query->whereDate('created_at', '>=', $filters['date_from']))
+            ->when(isset($filters['date_to']), fn ($query) => $query->whereDate('created_at', '<=', $filters['date_to']))
+            ->orderByDesc('created_at')
+            ->paginate($filters['per_page'] ?? 15)
+            ->withQueryString();
 
-            // Filtre par type d'action
-            if ($request->has('action')) {
-                $query->where('action', 'like', '%' . $request->action . '%');
-            }
-
-            // Filtre par date de début
-            if ($request->has('date_from')) {
-                $query->whereDate('created_at', '>=', $request->date_from);
-            }
-
-            // Filtre par date de fin
-            if ($request->has('date_to')) {
-                $query->whereDate('created_at', '<=', $request->date_to);
-            }
-
-            // Pagination
-            $perPage = $request->get('per_page', 15);
-            $logs = $query->orderBy('created_at', 'desc')->paginate($perPage);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Logs d\'activité récupérés avec succès.',
-                'data' => $logs
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des logs d\'activité.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Afficher les détails d'un log d'activité.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function show($id)
-    {
-        try {
-            $log = ActivityLog::with('user')->find($id);
-
-            if (!$log) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Log d\'activité non trouvé.'
-                ], 404);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Détails du log d\'activité récupérés avec succès.',
-                'data' => $log
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération du log d\'activité.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Logs d’activité récupérés avec succès.',
+            'data' => $logs,
+        ]);
     }
 }

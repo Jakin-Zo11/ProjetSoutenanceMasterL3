@@ -12,7 +12,7 @@ interface DataTableProps {
   onRowClick?: (row: any) => void;
 }
 
-const DataTable: React.FC<DataTableProps> = ({ columns, data, onRowClick }) => {
+const DataTable: React.FC<DataTableProps> = ({ columns, data = [], onRowClick }) => {
   return (
     <div className="bg-white rounded-xl border border-[#DDEAF7] overflow-hidden">
       <div className="overflow-x-auto">

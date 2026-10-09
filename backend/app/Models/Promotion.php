@@ -19,6 +19,7 @@ class Promotion extends Model
         'formation_id',
         'year',
         'name',
+        'mention',
     ];
 
     /**

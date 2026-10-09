@@ -8,7 +8,7 @@
  * c'est le pattern de navigation choisi pour ce projet (pas d'expo-router).
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   Pressable,
@@ -42,6 +42,7 @@ import JuryTeamScreen from './components/jury/JuryTeamScreen';
 import EvaluationFormScreen from './components/jury/EvaluationFormScreen';
 import SubmissionConfirmationScreen from './components/jury/SubmissionConfirmationScreen';
 import { demoDefenses, type JuryEvaluation } from './types/defenseWorkflow';
+import { setUnauthorizedHandler } from './services/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,13 @@ export default function App() {
 function AppShell() {
   const nav = useAppNavigation();
   const session = useStudentSession();
+  useEffect(
+    () => setUnauthorizedHandler(async () => {
+      await session.logout();
+      nav.resetTo('student-access');
+    }),
+    [session.logout, nav.resetTo],
+  );
   const [selectedJuryDefense, setSelectedJuryDefense] = useState<{
     studentId: string;
     studentName: string;
@@ -299,7 +307,12 @@ function AppShell() {
         defense={studentDefense}
         onSubmitPdf={session.submitPdf}
         onNavigate={(screen) => nav.resetTo(screen)}
-        onExit={() => { session.logout(); nav.resetTo('select'); }}
+        onExit={() => {
+          void session.logout().catch((error: unknown) => {
+            console.error('Impossible de supprimer le jeton étudiant du stockage sécurisé.', error);
+          });
+          nav.resetTo('select');
+        }}
       />
     );
   }

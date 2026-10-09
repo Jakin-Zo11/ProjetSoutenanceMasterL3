@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Simulation\PlanificationSimulationController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\FormationController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -17,6 +19,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 use App\Http\Controllers\Api\Student\StudentAuthController;
 use App\Http\Controllers\Api\Student\StudentProfileController;
+use App\Http\Controllers\Api\Student\StudentSimulationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +33,8 @@ use App\Http\Controllers\Api\Student\StudentProfileController;
 */
 
 // Auth Routes (email + password — admin / jury)
+Route::post('/login', [AuthController::class, 'login']);
+
 Route::prefix('v1/auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 
@@ -45,10 +50,23 @@ Route::prefix('v1/student')->group(function () {
     Route::post('/login', [StudentAuthController::class, 'login']);
 
     // Routes protégées — token Sanctum étudiant
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'role:etudiant'])->group(function () {
         Route::get('/profile', [StudentProfileController::class, 'show']);
         Route::patch('/profile', [StudentProfileController::class, 'update']);
+        Route::prefix('simulation')->group(function () {
+            Route::get('/profile', [StudentSimulationController::class, 'profile']);
+            Route::get('/thesis', [StudentSimulationController::class, 'thesis']);
+            Route::get('/defense', [StudentSimulationController::class, 'defense']);
+            Route::get('/documents', [StudentSimulationController::class, 'documents']);
+        });
     });
+});
+
+// Authenticated API lists and schedule demonstration data.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/admin/students', [AdminUserController::class, 'students']);
+    Route::get('/admin/teachers', [AdminUserController::class, 'teachers']);
+    Route::get('/simulation/planifications', [PlanificationSimulationController::class, 'index']);
 });
 
 // Admin Routes
@@ -81,3 +99,7 @@ Route::prefix('v1/admin')->middleware(['auth:sanctum', 'role:admin_scolarite'])-
     Route::get('soutenances/{id}/pv', [PvSoutenanceController::class, 'getPv']);
     Route::post('soutenances/{id}/cloturer', [PvSoutenanceController::class, 'cloturer']);
 });
+
+// Compatibility endpoint for system activity logs.
+Route::get('/logs', [ActivityLogController::class, 'index'])
+    ->middleware(['auth:sanctum', 'role:admin_scolarite']);

@@ -8,16 +8,18 @@ export default {
     extend: {
       colors: {
         emit: {
-          navy: '#0A192F',
-          primary: '#1E3A8A',
-          sky: '#3B82F6',
-          skyLight: '#F8FAFC',
-          bg: '#F8FAFC',
+          navy: '#0B1F4B',
+          primary: '#2563EB',
+          sky: '#7DD3FC',
+          skyLight: '#E0F2FE',
+          bg: '#F5F8FF',
           card: '#FFFFFF',
-          border: '#DDEAF7',
-          text: '#0A192F',
-          muted: '#637799',
-          error: '#1E3A8A',
+          border: '#E5EAF5',
+          text: '#0B1F4B',
+          muted: '#52627D',
+          error: '#E11D48',
+          success: '#15803D',
+          warning: '#C2410C',
         },
       },
       fontFamily: {
@@ -26,7 +28,7 @@ export default {
         mono: ['JetBrains Mono', 'monospace'],
       },
       borderRadius: {
-        emit: '10px',
+        emit: '14px',
       },
     },
   },

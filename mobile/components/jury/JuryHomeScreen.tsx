@@ -275,6 +275,7 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, tea
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.light.tint} />}
       >
+        <View style={styles.juryHero}>
         <View style={styles.brandRow}>
           <Image
             source={require('../../assets/images/Logo-emit.png')}
@@ -295,7 +296,15 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, tea
             </View>
           </View>
         </View>
+        <View style={styles.quickActions}>
+          <QuickAction icon="today-outline" label="Aujourd’hui" onPress={() => setFilter('today')} />
+          <QuickAction icon="people-outline" label="Mes étudiants" onPress={() => onNavigate('jury-students')} />
+          <QuickAction icon="school-outline" label="Équipe jury" onPress={() => onNavigate('jury-team')} />
+          <QuickAction icon="person-outline" label="Profil" onPress={() => onNavigate('jury-profile')} />
+        </View>
+        </View>
 
+        <View style={styles.contentSheet}>
         <View style={styles.statsGrid}>
           <StatCard icon="calendar-outline" label="Soutenances aujourd'hui" value={stats.soutenancesAujourdhui} active={filter === 'today'} onPress={() => setFilter('today')} />
           <StatCard icon="calendar-clear-outline" label="Soutenances à venir" value={stats.soutenancesAVenir} active={filter === 'upcoming'} onPress={() => setFilter('upcoming')} />
@@ -419,6 +428,7 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, tea
             <Text style={styles.emptyText}>Aucune soutenance ne correspond à votre recherche.</Text>
           </View>
         )}
+        </View>
       </ScrollView>
 
       <BottomNav
@@ -431,14 +441,68 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, tea
   );
 };
 
+const QuickAction = ({ icon, label, onPress }: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+}) => (
+  <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.8 }]}>
+    <View style={styles.quickActionIcon}>
+      <Ionicons name={icon} size={21} color="#FFFFFF" />
+    </View>
+    <Text style={styles.quickActionLabel} numberOfLines={1}>{label}</Text>
+  </Pressable>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
+    backgroundColor: Colors.light.navy,
   },
   content: {
-    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  juryHero: {
+    backgroundColor: Colors.light.navy,
+    paddingTop: 12,
+    paddingBottom: 38,
+  },
+  contentSheet: {
+    backgroundColor: '#F8FAFC',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -24,
+    minHeight: 600,
+    padding: 18,
     paddingBottom: 28,
+    gap: 16,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingTop: 4,
+  },
+  quickAction: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 7,
+  },
+  quickActionIcon: {
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    borderRadius: 23,
+    elevation: 3,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  quickActionLabel: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   institution: {
     color: Colors.light.tint,
@@ -461,7 +525,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   brandText: {
-    color: Colors.light.tint,
+    color: '#FFFFFF',
     flex: 1,
     fontFamily: Fonts?.sans,
     fontSize: 12,
@@ -486,12 +550,12 @@ const styles = StyleSheet.create({
     width: 48,
   },
   greeting: {
-    color: Colors.light.icon,
+    color: '#BFDBFE',
     fontFamily: Fonts?.sans,
     fontSize: 14,
   },
   profileTitle: {
-    color: Colors.light.tint,
+    color: '#FFFFFF',
     fontFamily: Fonts?.sans,
     fontSize: 18,
     fontWeight: '700',

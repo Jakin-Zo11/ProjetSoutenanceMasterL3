@@ -10,7 +10,6 @@ export const juryTabItems: {
 }[] = [
   { id: 'home', icon: 'home-outline', label: 'Accueil' },
   { id: 'defenses', icon: 'calendar-outline', label: 'Étudiants' },
-  { id: 'team', icon: 'people-outline', label: 'Équipe Jury' },
   { id: 'evaluations', icon: 'clipboard-outline', label: 'Évaluations' },
   { id: 'profile', icon: 'person-outline', label: 'Profil' },
 ];

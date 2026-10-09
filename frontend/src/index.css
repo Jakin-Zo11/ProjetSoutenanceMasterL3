@@ -12,8 +12,8 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #F0F5FB;
-  color: #0B1D3A;
+  background-color: var(--emit-canvas);
+  color: var(--emit-navy);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -32,15 +32,15 @@ h6 {
   min-height: 100vh;
 }
 
-/* EMIT Color Palette */
 :root {
-  --emit-navy: #0D1F4E;
-  --emit-primary: #1A4BA8;
-  --emit-sky: #2D84E0;
-  --emit-sky-light: #EAF4FF;
-  --emit-bg: #F0F5FB;
-  --emit-border: #DDEAF7;
-  --emit-text: #0B1D3A;
-  --emit-muted: #637799;
-  --emit-red: #1E3A8A;
+  --emit-white: #FFFFFF;
+  --emit-canvas: #F5F8FF;
+  --emit-navy: #0B1F4B;
+  --emit-blue: #2563EB;
+  --emit-sky: #7DD3FC;
+  --emit-sky-light: #E0F2FE;
+  --emit-border: #E5EAF5;
+  --emit-muted: #52627D;
+  --emit-red: #E11D48;
+  --emit-green: #15803D;
 }

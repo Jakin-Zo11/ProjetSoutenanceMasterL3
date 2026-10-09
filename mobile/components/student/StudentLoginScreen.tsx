@@ -82,12 +82,12 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
               value={vm.matricule}
               onChangeText={vm.handleChangeText}
               onBlur={vm.handleBlur}
-              placeholder="001I24"
+              placeholder="001I26"
               placeholderTextColor="#9CA3AF"
               keyboardType="default"
               autoCapitalize="characters"
               autoCorrect={false}
-              maxLength={20}
+              maxLength={6}
               editable={!vm.isLoading}
             />
           </View>
@@ -97,7 +97,17 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
             <View style={styles.hintRow}>
               <Ionicons name="information-circle-outline" size={14} color="#6B7280" />
               <Text style={styles.hintText}>
-                En mode démo, tout matricule non vide est accepté.
+                3 chiffres · la lettre I · 2 chiffres — ex : 001I26
+              </Text>
+            </View>
+          )}
+
+          {/* Alerte mode démo */}
+          {vm.isDemoMode && (
+            <View style={styles.demoAlert}>
+              <Ionicons name="warning-outline" size={16} color="#3B82F6" />
+              <Text style={styles.demoAlertText}>
+                Mode démo activé : Serveur injoignable. Utilisation des données locales.
               </Text>
             </View>
           )}
@@ -105,9 +115,9 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
           {/* Erreur */}
           {(vm.showError || !!vm.errorMessage) && (
             <View style={styles.errorRow}>
-              <Ionicons name="alert-circle-outline" size={14} color="#1E3A8A" />
+              <Ionicons name="alert-circle-outline" size={14} color="#3B82F6" />
               <Text style={styles.errorText}>
-                {vm.errorMessage || 'Format incorrect — exemple valide : 001I24'}
+                {vm.errorMessage || 'Format incorrect — exemple valide : 001I26'}
               </Text>
             </View>
           )}
@@ -203,9 +213,9 @@ const styles = StyleSheet.create({
   },
   formatHint: {
     fontSize: 12,
-    color: '#1E3A8A',
+    color: '#3B82F6',
     fontFamily: 'Inter-SemiBold',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#EAF4FF',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -246,6 +256,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     flex: 1,
   },
+  demoAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EAF4FF',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  demoAlertText: {
+    fontSize: 12,
+    color: '#1E3A8A',
+    fontFamily: 'Inter-Regular',
+    flex: 1,
+  },
   errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -255,19 +283,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   errorText: {
-    color: '#1E3A8A',
+    color: '#3B82F6',
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     flex: 1,
   },
   loginButton: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#0A192F',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
     elevation: 4,
-    shadowColor: '#1E3A8A',
+    shadowColor: '#0A192F',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

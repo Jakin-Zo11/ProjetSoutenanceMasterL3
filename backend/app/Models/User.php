@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -24,6 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'telephone',
         'matricule',
         'status',
@@ -96,5 +98,13 @@ class User extends Authenticatable
     public function promotion()
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    /**
+     * Dépôts de mémoire associés à l'étudiant.
+     */
+    public function depots(): HasMany
+    {
+        return $this->hasMany(Depot::class, 'etudiant_id');
     }
 }

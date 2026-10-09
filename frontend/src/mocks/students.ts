@@ -61,5 +61,17 @@ export const mockStudents: Student[] = [
     promotion: '2025-2026',
     sujetThese: 'Plateforme e-learning adaptative basée sur l\'IA',
     status: 'En attente',
+  },
+  {
+    id: 6,
+    matricule: '006I26',
+    nom: 'Andrianina',
+    prenom: 'Miora',
+    email: 'miora.andrianina@emit.mg',
+    telephone: '+261 34 00 000 06',
+    formation: 'Master 2 Informatique de Gestion',
+    promotion: '2025-2026',
+    sujetThese: 'Conception d’une plateforme de suivi des stages universitaires',
+    status: 'En attente',
   }
 ];

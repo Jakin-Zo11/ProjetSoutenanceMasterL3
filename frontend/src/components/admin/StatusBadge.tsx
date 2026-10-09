@@ -1,43 +1,34 @@
 import React from 'react';
 interface StatusBadgeProps {
   status: string;
+  label?: string;
 }
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
   const getBadgeStyles = (status: string) => {
     switch (status) {
       case 'En attente':
-        return 'bg-[#EAF1FB] text-[#3D6EA8]';
+      case 'À affecter':
+      case 'Non généré':
+      case 'Non publié':
+        return 'bg-[#FFF7ED] text-[#9A3412]';
       case 'Planifiée':
       case 'En cours':
-        return 'bg-[#DBEAFE] text-[#1D4ED8]';
+      case 'Soumise':
+      case 'Généré':
+      case 'Reprogrammée':
+        return 'bg-[#E0F2FE] text-[#075985]';
       case 'Terminé':
       case 'Publié':
-        return 'bg-[#1A4BA8] text-white';
-      case 'Annulée':
-        return 'bg-[#EFF6FF] text-[#1E3A8A]';
-      case 'Reprogrammée':
-        return 'bg-[#E0F2FE] text-[#0369A1]';
       case 'Actif':
-        return 'bg-[#DBEAFE] text-[#1D4ED8]';
-      case 'Inactif':
-        return 'bg-[#EFF6FF] text-[#1E3A8A]';
-      case 'Soumise':
-        return 'bg-[#DBEAFE] text-[#1D4ED8]';
-      case 'En attente':
-        return 'bg-[#EAF1FB] text-[#3D6EA8]';
-      case 'En cours':
-        return 'bg-[#E0F2FE] text-[#0369A1]';
+        return 'bg-[#DCFCE7] text-[#166534]';
+      case 'Annulée':
       case 'Conflit':
-        return 'bg-[#EFF6FF] text-[#1E3A8A]';
-      case 'Non publié':
-        return 'bg-[#EAF1FB] text-[#3D6EA8]';
-      case 'Généré':
-        return 'bg-[#DBEAFE] text-[#1D4ED8]';
-      case 'Non généré':
-        return 'bg-[#EAF1FB] text-[#3D6EA8]';
+        return 'bg-[#FFF1F2] text-[#BE123C]';
+      case 'Inactif':
+        return 'bg-[#F1F5F9] text-[#475569]';
       default:
-        return 'bg-[#EAF1FB] text-[#3D6EA8]';
+        return 'bg-[#E0F2FE] text-[#075985]';
     }
   };
 
@@ -46,7 +37,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       className={`px-3 py-1 rounded-full text-xs font-semibold ${getBadgeStyles(status)}`}
       style={{ fontFamily: 'Inter, sans-serif' }}
     >
-      {status}
+      {label || status}
     </span>
   );
 };

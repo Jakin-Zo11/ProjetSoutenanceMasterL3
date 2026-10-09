@@ -49,6 +49,21 @@ class AuthApiTest extends TestCase
         $this->assertArrayHasKey('token', $response->json());
     }
 
+    public function test_user_can_login_through_short_login_route()
+    {
+        User::factory()->create([
+            'email' => 'short-login@example.com',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $this->postJson('/api/login', [
+            'email' => 'short-login@example.com',
+            'password' => 'password123',
+        ])->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure(['token', 'user' => ['role']]);
+    }
+
     public function test_user_cannot_login_with_invalid_email()
     {
         $response = $this->postJson('/api/v1/auth/login', [
