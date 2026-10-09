@@ -18,6 +18,7 @@ class Depot extends Model
     protected $fillable = [
         'etudiant_id',
         'promotion_id',
+        'type',
         'title',
         'file_path',
         'status',

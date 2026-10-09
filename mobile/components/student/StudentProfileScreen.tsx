@@ -1,11 +1,15 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+
+import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import TopBar from '../common/TopBar';
 import StudentTabNavigator from './StudentTabNavigator';
 import type { StudentPdfSubmission } from '../../hooks/useStudentSession';
-import type { StudentProfile } from '../../types/etudiant';
 import type { DemoDefense } from '../../types/defenseWorkflow';
+import TopBar from '../common/TopBar';
+import type { StudentProfile } from '../../types/etudiant';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StudentProfileScreenProps {
   student: StudentProfile;
@@ -14,6 +18,31 @@ interface StudentProfileScreenProps {
   onNavigate: (screen: 'student' | 'student-defense' | 'student-results' | 'student-profile') => void;
   onExit: () => void;
 }
+
+// ─── Sous-composants ──────────────────────────────────────────────────────────
+
+interface InfoRowProps {
+  label: string;
+  value: string;
+  locked?: boolean;
+  last?: boolean;
+}
+
+const InfoRow: React.FC<InfoRowProps> = ({ label, value, locked, last }) => (
+  <View style={[styles.infoRow, last && styles.infoRowLast]}>
+    <Text style={styles.infoLabel}>{label}</Text>
+    <View style={styles.infoValueRow}>
+      <Text style={styles.infoValue} numberOfLines={2}>
+        {value || '—'}
+      </Text>
+      {locked && (
+        <Ionicons name="lock-closed" size={12} color="#9CA3AF" style={styles.lockIcon} />
+      )}
+    </View>
+  </View>
+);
+
+// ─── Écran principal ─────────────────────────────────────────────────────────
 
 const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
   student,
@@ -53,7 +82,7 @@ const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
           <Text style={styles.sectionTitle}>Thème de stage / mémoire</Text>
         </View>
         <Text style={styles.themeTitle}>{student.themeTitle ?? defense?.theme ?? 'Thème non renseigné'}</Text>
-        <InfoRow label="Entreprise d’accueil" value={student.company ?? 'Non renseignée'} />
+        <InfoRow label="Entreprise d'accueil" value={student.company ?? 'Non renseignée'} />
       </View>
 
       <View style={styles.card}>
@@ -72,6 +101,7 @@ const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
           />
           <Text style={styles.statusText}>{pdfSubmission ? 'Rédaction déposée' : 'Rédaction en attente de dépôt'}</Text>
         </View>
+
         {pdfSubmission && (
           <View style={styles.fileRow}>
             <Ionicons name="document-outline" size={18} color={COLORS.blue} />
@@ -83,13 +113,6 @@ const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
     </ScrollView>
     <StudentTabNavigator activeTab="profile" onNavigate={onNavigate} />
   </SafeAreaView>
-);
-
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
-  </View>
 );
 
 const COLORS = {
@@ -115,8 +138,11 @@ const styles = StyleSheet.create({
   heading: { alignItems: 'center', flexDirection: 'row', gap: 9, marginBottom: 12 },
   sectionTitle: { color: COLORS.navy, flex: 1, fontSize: 16, fontWeight: '700' },
   infoRow: { borderBottomColor: COLORS.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingVertical: 12 },
+  infoRowLast: { borderBottomWidth: 0 },
   infoLabel: { color: COLORS.muted, flex: 1, fontSize: 13 },
   infoValue: { color: COLORS.navy, flex: 1.4, fontSize: 13, fontWeight: '600', textAlign: 'right' },
+  infoValueRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  lockIcon: { marginLeft: 4 },
   themeTitle: { color: COLORS.navy, fontSize: 15, lineHeight: 22, marginBottom: 6 },
   body: { color: COLORS.muted, fontSize: 14, lineHeight: 21 },
   statusPill: { alignItems: 'center', alignSelf: 'flex-start', borderRadius: 20, flexDirection: 'row', gap: 7, marginTop: 16, paddingHorizontal: 12, paddingVertical: 9 },

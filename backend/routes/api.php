@@ -19,7 +19,6 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 use App\Http\Controllers\Api\Student\StudentAuthController;
 use App\Http\Controllers\Api\Student\StudentProfileController;
-use App\Http\Controllers\Api\Student\StudentSimulationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,12 +52,6 @@ Route::prefix('v1/student')->group(function () {
     Route::middleware(['auth:sanctum', 'role:etudiant'])->group(function () {
         Route::get('/profile', [StudentProfileController::class, 'show']);
         Route::patch('/profile', [StudentProfileController::class, 'update']);
-        Route::prefix('simulation')->group(function () {
-            Route::get('/profile', [StudentSimulationController::class, 'profile']);
-            Route::get('/thesis', [StudentSimulationController::class, 'thesis']);
-            Route::get('/defense', [StudentSimulationController::class, 'defense']);
-            Route::get('/documents', [StudentSimulationController::class, 'documents']);
-        });
     });
 });
 
