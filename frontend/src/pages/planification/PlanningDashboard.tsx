@@ -3,7 +3,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { getPlanning, Soutenance } from '../../services/api/soutenanceApi';
+import { getPlanning, planifierSoutenance, Soutenance } from '../../services/api/soutenanceApi';
+import ReplanificationModal from './ReplanificationModal';
 
 const STATUT_COLORS: Record<string, string> = {
   en_attente: '#94a3b8',
@@ -18,6 +19,10 @@ const PlanningDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Soutenance | null>(null);
+  const [replanifierId, setReplanifierId] = useState<number | null>(null);
+  const [dateChoisie, setDateChoisie] = useState<Record<number, string>>({});
+  const [planifMessage, setPlanifMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [planifLoading, setPlanifLoading] = useState<number | null>(null);
 
   useEffect(() => {
     chargerPlanning();
@@ -28,11 +33,36 @@ const PlanningDashboard: React.FC = () => {
     setError(null);
     try {
       const data = await getPlanning();
-      setSoutenances(data);
+      setSoutenances(Array.isArray(data) ? data : []);
     } catch (e) {
       setError("Impossible de charger le planning des soutenances.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const enAttente = soutenances.filter((s) => s.statut === 'en_attente');
+
+  const handlePlanifier = async (soutenanceId: number) => {
+    const date = dateChoisie[soutenanceId];
+    const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(date ?? '');
+    if (!dateValide) {
+      setPlanifMessage({ type: 'error', text: 'Date invalide — utilise le selecteur calendrier.' });
+      return;
+    }
+
+    setPlanifLoading(soutenanceId);
+    setPlanifMessage(null);
+
+    const result = await planifierSoutenance(soutenanceId, date);
+
+    setPlanifLoading(null);
+
+    if (result.success) {
+      setPlanifMessage({ type: 'success', text: 'Soutenance planifiee avec succes.' });
+      chargerPlanning();
+    } else {
+      setPlanifMessage({ type: 'error', text: result.message ?? 'Aucun creneau disponible pour cette date.' });
     }
   };
 
@@ -65,24 +95,86 @@ const PlanningDashboard: React.FC = () => {
       )}
 
       {!loading && !error && (
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-          locale="fr"
-          slotMinTime="08:00:00"
-          slotMaxTime="18:00:00"
-          allDaySlot={false}
-          events={events}
-          eventClick={(info) => {
-            setSelected(info.event.extendedProps.soutenance as Soutenance);
-          }}
-          height="auto"
-        />
+        <>
+          {enAttente.length > 0 && (
+            <div
+              style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '0.5rem',
+                background: '#f8fafc',
+              }}
+            >
+              <h2 style={{ fontWeight: 600, marginBottom: '0.75rem' }}>
+                Soutenances en attente de planification ({enAttente.length})
+              </h2>
+              {enAttente.map((s) => (
+                <div
+                  key={s.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0',
+                    borderBottom: '1px solid #e2e8f0',
+                  }}
+                >
+                  <span style={{ flex: 1 }}>{s.theme ?? `Soutenance #${s.id}`}</span>
+                  <input
+                    type="date"
+                    value={dateChoisie[s.id] ?? ''}
+                    onChange={(e) =>
+                      setDateChoisie((cur) => ({ ...cur, [s.id]: e.target.value }))
+                    }
+                    style={{ padding: '0.35rem' }}
+                  />
+                  <button
+                    onClick={() => handlePlanifier(s.id)}
+                    disabled={planifLoading === s.id}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      borderRadius: '0.375rem',
+                    }}
+                  >
+                    {planifLoading === s.id ? 'Planification...' : 'Planifier'}
+                  </button>
+                </div>
+              ))}
+              {planifMessage && (
+                <p
+                  style={{
+                    marginTop: '0.75rem',
+                    color: planifMessage.type === 'error' ? '#ef4444' : '#22c55e',
+                  }}
+                >
+                  {planifMessage.text}
+                </p>
+              )}
+            </div>
+          )}
+
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+            }}
+            locale="fr"
+            slotMinTime="08:00:00"
+            slotMaxTime="18:00:00"
+            allDaySlot={false}
+            events={events}
+            eventClick={(info) => {
+              setSelected(info.event.extendedProps.soutenance as Soutenance);
+            }}
+            height="auto"
+          />
+        </>
       )}
 
       {selected && (
@@ -100,11 +192,26 @@ const PlanningDashboard: React.FC = () => {
           </h2>
           <p>Statut : {selected.statut}</p>
           <p>Salle : {selected.salle_id ?? 'Non assignee'}</p>
-          <button onClick={() => setSelected(null)} style={{ marginTop: '0.5rem' }}>
-            Fermer
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <button onClick={() => setReplanifierId(selected.id)}>
+              Replanifier
+            </button>
+            <button onClick={() => setSelected(null)}>
+              Fermer
+            </button>
+          </div>
         </div>
       )}
+
+      <ReplanificationModal
+        soutenanceId={replanifierId ?? 0}
+        isOpen={replanifierId !== null}
+        onClose={() => setReplanifierId(null)}
+        onReplanified={() => {
+          chargerPlanning();
+          setSelected(null);
+        }}
+      />
     </div>
   );
 };

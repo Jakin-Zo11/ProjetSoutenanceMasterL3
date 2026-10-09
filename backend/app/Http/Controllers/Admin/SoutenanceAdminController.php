@@ -8,88 +8,54 @@ use Illuminate\Http\Request;
 
 class SoutenanceAdminController extends Controller
 {
-    /**
-     * Afficher la liste des soutenances avec filtres.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function index(Request $request)
     {
         try {
-            $query = Soutenance::with(['depot.etudiant', 'depot.promotion', 'sessionSoutenance', 'room']);
+            $query = Soutenance::with(['depot.etudiant', 'depot.promotion', 'salle']);
 
-            // Filtre par statut
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
+            if ($request->has('statut')) {
+                $query->where('statut', $request->statut);
             }
 
-            // Filtre par session de soutenance
-            if ($request->has('session_soutenance_id')) {
-                $query->where('session_soutenance_id', $request->session_soutenance_id);
+            if ($request->has('salle_id')) {
+                $query->where('salle_id', $request->salle_id);
             }
 
-            // Filtre par salle
-            if ($request->has('room_id')) {
-                $query->where('room_id', $request->room_id);
-            }
-
-            // Filtre par date
             if ($request->has('date')) {
-                $query->whereDate('date', $request->date);
+                $query->whereDate('date_debut', $request->date);
             }
 
-            $soutenances = $query->orderBy('date', 'asc')->get();
+            $soutenances = $query->orderBy('date_debut', 'asc')->get();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Liste des soutenances récupérée avec succès.',
+                'message' => 'Liste des soutenances recuperee avec succes.',
                 'data' => $soutenances
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des soutenances.',
+                'message' => 'Erreur lors de la recuperation des soutenances.',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Mettre à jour le planning d'une soutenance.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Soutenance  $soutenance
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function updatePlanning(Request $request, Soutenance $soutenance)
     {
         try {
             $validated = $request->validate([
-                'date' => 'nullable|date',
-                'room_id' => 'nullable|exists:rooms,id',
-                'remarques' => 'nullable|string',
+                'date_debut' => 'nullable|date',
+                'date_fin' => 'nullable|date|after:date_debut',
+                'salle_id' => 'nullable|exists:rooms,id',
             ]);
 
-            if (isset($validated['date'])) {
-                $soutenance->date = $validated['date'];
-            }
-
-            if (isset($validated['room_id'])) {
-                $soutenance->room_id = $validated['room_id'];
-            }
-
-            if (isset($validated['remarques'])) {
-                $soutenance->remarques = $validated['remarques'];
-            }
-
-            $soutenance->save();
-
-            $soutenance->load(['depot.etudiant', 'depot.promotion', 'sessionSoutenance', 'room']);
+            $soutenance->update($validated);
+            $soutenance->load(['depot.etudiant', 'depot.promotion', 'salle']);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Planning de la soutenance mis à jour avec succès.',
+                'message' => 'Planning de la soutenance mis a jour avec succes.',
                 'data' => $soutenance
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -101,32 +67,26 @@ class SoutenanceAdminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour du planning.',
+                'message' => 'Erreur lors de la mise a jour du planning.',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Afficher les détails d'une soutenance.
-     *
-     * @param  \App\Models\Soutenance  $soutenance
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function show(Soutenance $soutenance)
     {
         try {
-            $soutenance->load(['depot.etudiant', 'depot.promotion', 'sessionSoutenance', 'room']);
+            $soutenance->load(['depot.etudiant', 'depot.promotion', 'salle']);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Détails de la soutenance récupérés avec succès.',
+                'message' => 'Details de la soutenance recuperes avec succes.',
                 'data' => $soutenance
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération de la soutenance.',
+                'message' => 'Erreur lors de la recuperation de la soutenance.',
                 'error' => $e->getMessage()
             ], 500);
         }

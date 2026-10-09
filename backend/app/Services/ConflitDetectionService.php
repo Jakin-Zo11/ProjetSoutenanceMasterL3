@@ -10,46 +10,82 @@ use Illuminate\Support\Carbon;
 
 class ConflitDetectionService
 {
-    public function salleOccupee(int $salleId, Carbon $debut, Carbon $fin): bool
-    {
+    /**
+     * Vérifie si une salle est occupée
+     * pendant le créneau demandé.
+     */
+    public function salleOccupee(
+        int $salleId,
+        Carbon $debut,
+        Carbon $fin
+    ): bool {
         return Soutenance::where('salle_id', $salleId)
-            ->where(function ($q) use ($debut, $fin) {
-                $q->whereBetween('date_debut', [$debut, $fin])
-                  ->orWhereBetween('date_fin', [$debut, $fin])
-                  ->orWhere(function ($q2) use ($debut, $fin) {
-                      $q2->where('date_debut', '<=', $debut)
-                         ->where('date_fin', '>=', $fin);
-                  });
-            })
+            ->whereNotNull('date_debut')
+            ->whereNotNull('date_fin')
+            ->where('date_debut', '<', $fin)
+            ->where('date_fin', '>', $debut)
             ->exists();
     }
 
-    public function enseignantIndisponible(int $enseignantId, Carbon $debut, Carbon $fin): bool
-    {
-        return Indisponibilite::where('enseignant_id', $enseignantId)
-            ->where(function ($q) use ($debut, $fin) {
-                $q->whereBetween('date_debut', [$debut, $fin])
-                  ->orWhereBetween('date_fin', [$debut, $fin])
-                  ->orWhere(function ($q2) use ($debut, $fin) {
-                      $q2->where('date_debut', '<=', $debut)
-                         ->where('date_fin', '>=', $fin);
-                  });
-            })
+    /**
+     * Vérifie si un enseignant est indisponible
+     * sur le créneau demandé.
+     */
+    public function enseignantIndisponible(
+        int $enseignantId,
+        Carbon $debut,
+        Carbon $fin
+    ): bool {
+        return Indisponibilite::where(
+            'enseignant_id',
+            $enseignantId
+        )
+            ->whereDate(
+                'date',
+                $debut->toDateString()
+            )
+            ->where(
+                'heure_debut',
+                '<',
+                $fin->format('H:i:s')
+            )
+            ->where(
+                'heure_fin',
+                '>',
+                $debut->format('H:i:s')
+            )
             ->exists();
     }
 
-    public function enseignantDejaAffecte(int $enseignantId, Carbon $debut, Carbon $fin): bool
-    {
-        return AffectationJury::where('enseignant_id', $enseignantId)
-            ->whereHas('soutenance', function ($q) use ($debut, $fin) {
-                $q->where(function ($q2) use ($debut, $fin) {
-                    $q2->whereBetween('date_debut', [$debut, $fin])
-                       ->orWhereBetween('date_fin', [$debut, $fin])
-                       ->orWhere(function ($q3) use ($debut, $fin) {
-                           $q3->where('date_debut', '<=', $debut)
-                              ->where('date_fin', '>=', $fin);
-                       });
-                });
+    /**
+     * Vérifie si un enseignant est déjà affecté
+     * à une autre soutenance sur le créneau.
+     */
+    public function enseignantDejaAffecte(
+        int $enseignantId,
+        Carbon $debut,
+        Carbon $fin
+    ): bool {
+        return AffectationJury::where(
+            'enseignant_id',
+            $enseignantId
+        )
+            ->whereHas('soutenance', function ($q) use (
+                $debut,
+                $fin
+            ) {
+                $q->whereNotNull('date_debut')
+                    ->whereNotNull('date_fin')
+                    ->where(
+                        'date_debut',
+                        '<',
+                        $fin
+                    )
+                    ->where(
+                        'date_fin',
+                        '>',
+                        $debut
+                    );
             })
             ->exists();
     }

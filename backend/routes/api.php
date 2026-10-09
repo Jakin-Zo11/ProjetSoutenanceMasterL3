@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\PlanificationController;
 use App\Http\Controllers\Api\IndisponibiliteController;
 use App\Http\Controllers\Api\AffectationJuryController;
 use App\Http\Controllers\Api\ConvocationController;
+use App\Http\Controllers\Api\ParametrePlanificationController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -33,6 +34,9 @@ use App\Http\Controllers\Api\ConvocationController;
 */
 
 // Planification & convocations (Lauris)
+Route::get('/planning/parametres', [ParametrePlanificationController::class, 'show']);
+Route::put('/planning/parametres', [ParametrePlanificationController::class, 'update']);
+
 Route::get('/planning/conflits', [PlanificationController::class, 'conflits']);
 Route::get('/soutenances/{soutenance}/convocation', [ConvocationController::class, 'show']);
 Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
@@ -41,6 +45,7 @@ Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'dest
 
 Route::get('/planning', [PlanificationController::class, 'index']);
 Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
+Route::post('/soutenances/{soutenance}/replanifier', [PlanificationController::class, 'replanifier']);
 
 Route::get('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'index']);
 Route::post('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'store']);
