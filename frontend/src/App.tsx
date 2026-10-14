@@ -21,8 +21,11 @@ import PlanningDashboard from './pages/planification/PlanningDashboard';
 import AffectationJurysPage from './pages/planification/AffectationJurysPage';
 
 import ConvocationPreview from './pages/planification/ConvocationPreview';
-import ReplanificationModal from './pages/planification/ReplanificationModal'; // utilise en modal, pas en route directe
+import ReplanificationModal from './pages/planification/ReplanificationModal';// utilise en modal, pas en route directe
 import DetectionConflitsPanel from './pages/planification/DetectionConflitsPanel';
+import ParametresPlanificationPage from './pages/planification/ParametresPlanificationPage';
+// avec les autres routes de planification :
+
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -53,6 +56,7 @@ const App: React.FC = () => {
           <Route path="admin/planification/affectation-jurys" element={<AffectationJurysPage />} />
           <Route path="admin/planification/convocation/:id" element={<ConvocationPreview />} />
           <Route path="admin/planification/conflits" element={<DetectionConflitsPanel />} />
+          <Route path="admin/planification/parametres" element={<ParametresPlanificationPage />} />
 
           {/* TODO (Lauris) : routes planification a activer une fois les pages codees */}
           <Route path="admin/planification" element={<PlanningDashboard />} />

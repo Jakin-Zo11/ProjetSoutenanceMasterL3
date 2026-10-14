@@ -29,7 +29,7 @@ class PlanificationController extends Controller
             'date' => 'required|date|after_or_equal:today',
         ]);
 
-        if ($soutenance->statut !== 'en_attente') {
+        if (!in_array($soutenance->statut, ['en_attente', 'planifiee'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cette soutenance n\'est pas en attente de planification.',

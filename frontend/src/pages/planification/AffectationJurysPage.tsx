@@ -13,7 +13,7 @@ const ROLES: { value: AffectationJury['role']; label: string }[] = [
   { value: 'rapporteur', label: 'Rapporteur' },
   { value: 'examinateur', label: 'Examinateur' },
 ];
-
+const normaliser = (r: string) => r.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const AffectationJurysPage: React.FC = () => {
   const [soutenances, setSoutenances] = useState<Soutenance[]>([]);
   const [enseignants, setEnseignants] = useState<Enseignant[]>([]);
@@ -45,24 +45,37 @@ const AffectationJurysPage: React.FC = () => {
   }, [selectedSoutenanceId]);
 
   const rolesRestants = ROLES.filter(
-    (r) => !affectations.some((a) => a.role === r.value)
-  );
+  (r) => !affectations.some((a) => normaliser(a.role) === r.value)
+);
+
+useEffect(() => {
+  if (rolesRestants.length > 0 && !rolesRestants.some((r) => r.value === selectedRole)) {
+    setSelectedRole(rolesRestants[0].value);
+  }
+}, [affectations]);
 
   const handleAffecter = async () => {
-    if (!selectedSoutenanceId || !selectedEnseignant) return;
-    setMessage(null);
+  if (!selectedSoutenanceId || !selectedEnseignant) return;
+  setMessage(null);
 
+  try {
     const result = await affecterJury(selectedSoutenanceId, Number(selectedEnseignant), selectedRole);
 
     if (result.success) {
       setMessage({ type: 'success', text: 'Enseignant affecte avec succes.' });
       setSelectedEnseignant('');
       const updated = await getAffectations(selectedSoutenanceId);
-      setAffectations(updated);
+      setAffectations(Array.isArray(updated) ? updated : []);
     } else {
-      setMessage({ type: 'error', text: result.message ?? 'Erreur lors de l\'affectation.' });
+      setMessage({ type: 'error', text: result.message ?? "Erreur lors de l'affectation." });
     }
-  };
+  } catch (e: any) {
+    setMessage({
+      type: 'error',
+      text: e?.response?.data?.message ?? "Erreur lors de l'affectation.",
+    });
+  }
+};
 
   const handleRetirer = async (affectationId: number) => {
     await retirerAffectation(affectationId);
@@ -112,7 +125,7 @@ const AffectationJurysPage: React.FC = () => {
                 }}
               >
                 <span>
-                  <strong>{ROLES.find((r) => r.value === a.role)?.label}</strong> —{' '}
+                  <strong>{ROLES.find((r) => r.value === normaliser(a.role))?.label}</strong> —{' '}
                   {a.enseignant?.name ?? `Enseignant #${a.enseignant_id}`}
                 </span>
                 <button onClick={() => handleRetirer(a.id)} style={{ color: '#ef4444' }}>
@@ -131,12 +144,13 @@ const AffectationJurysPage: React.FC = () => {
                   onChange={(e) => setSelectedEnseignant(e.target.value ? Number(e.target.value) : '')}
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
-                  <option value="">-- Choisir --</option>
-                  {enseignants.map((en) => (
-                    <option key={en.id} value={en.id}>
-                      {en.name} {en.email ?? ''}
-                    </option>
-                  ))}
+                  {enseignants
+  .filter((en) => !affectations.some((a) => a.enseignant_id === en.id))
+  .map((en) => (
+    <option key={en.id} value={en.id}>
+      {en.name}
+    </option>
+  ))}
                 </select>
               </div>
               <div>

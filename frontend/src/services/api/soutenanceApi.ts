@@ -28,18 +28,20 @@ export async function getPlanning(): Promise<Soutenance[]> {
 export async function planifierSoutenance(
   soutenanceId: number,
   date: string
-): Promise<{
-  success: boolean;
-  message?: string;
-  soutenance?: Soutenance;
-}> {
-  const response = await apiClient.post(
-    `/soutenances/${soutenanceId}/planifier`,
-    { date },
-    { baseURL: API_ROOT }
-  );
-
-  return response.data;
+): Promise<{ success: boolean; message?: string; soutenance?: Soutenance }> {
+  try {
+    const response = await apiClient.post(
+      `/soutenances/${soutenanceId}/planifier`,
+      { date },
+      { baseURL: API_ROOT }
+    );
+    return response.data;
+  } catch (e: any) {
+    return {
+      success: false,
+      message: e?.response?.data?.message ?? 'Erreur lors de la planification.',
+    };
+  }
 }
 
 // Replanification d'une soutenance déjà planifiée

@@ -12,11 +12,12 @@ export interface AffectationJury {
 }
 
 export async function getAffectations(soutenanceId: number): Promise<AffectationJury[]> {
-  const response = await apiClient.get<AffectationJury[]>(
-    `/soutenances/${soutenanceId}/jurys`,
-    { baseURL: API_ROOT }
-  );
-  return response.data;
+  const response = await apiClient.get(`/soutenances/${soutenanceId}/jurys`, { baseURL: API_ROOT });
+  const d = response.data;
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.affectations)) return d.affectations;
+  if (Array.isArray(d?.data)) return d.data;
+  return [];
 }
 
 export async function affecterJury(
