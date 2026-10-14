@@ -12,7 +12,7 @@ interface DataTableProps {
   onRowClick?: (row: any) => void;
 }
 
-const DataTable: React.FC<DataTableProps> = ({ columns, data, onRowClick }) => {
+const DataTable: React.FC<DataTableProps> = ({ columns, data = [], onRowClick }) => {
   return (
     <div className="bg-white rounded-xl border border-[#DDEAF7] overflow-hidden">
       <div className="overflow-x-auto">
@@ -33,7 +33,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data, onRowClick }) => {
           <tbody className="divide-y divide-[#DDEAF7]">
             {data.map((row, index) => (
               <tr
-                key={index}
+                key={row.id ?? row.reference ?? index}
                 className={`hover:bg-[#F0F5FB] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                 onClick={() => onRowClick?.(row)}
               >

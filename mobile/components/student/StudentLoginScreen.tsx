@@ -20,13 +20,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudentLoginViewModel } from '../../hooks/useStudentLoginViewModel';
+import type { StudentProfile } from '../../types/etudiant';
 
-// Re-export pour maintenir la compatibilité des imports existants
+// Re-export pour les écrans qui utilisent le profil étudiant.
 export type { StudentProfile } from '../../types/etudiant';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
-
-import type { StudentProfile } from '../../types/etudiant';
 
 interface StudentLoginScreenProps {
   onSuccess: (student: StudentProfile) => void;
@@ -40,7 +39,7 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor="#0A192F" />
       <View style={styles.content}>
 
         {/* Bouton retour */}
@@ -65,14 +64,14 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Accès étudiant</Text>
           <Text style={styles.formSubtitle}>
-            Entrez votre matricule pour consulter votre espace.
+            Entrez votre matricule pour accéder à votre espace étudiant.
           </Text>
 
           {/* Champ matricule */}
           <View style={styles.inputContainer}>
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Numéro matricule</Text>
-              <Text style={styles.formatHint}>Format : 001I24</Text>
+              <Text style={styles.formatHint}>Mode démo · matricule libre</Text>
             </View>
             <TextInput
               style={[
@@ -83,7 +82,7 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
               value={vm.matricule}
               onChangeText={vm.handleChangeText}
               onBlur={vm.handleBlur}
-              placeholder="001I24"
+              placeholder="001I26"
               placeholderTextColor="#9CA3AF"
               keyboardType="default"
               autoCapitalize="characters"
@@ -98,7 +97,17 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
             <View style={styles.hintRow}>
               <Ionicons name="information-circle-outline" size={14} color="#6B7280" />
               <Text style={styles.hintText}>
-                3 chiffres · la lettre I · 2 chiffres — ex : 001I24
+                3 chiffres · la lettre I · 2 chiffres — ex : 001I26
+              </Text>
+            </View>
+          )}
+
+          {/* Alerte mode démo */}
+          {vm.isDemoMode && (
+            <View style={styles.demoAlert}>
+              <Ionicons name="warning-outline" size={16} color="#3B82F6" />
+              <Text style={styles.demoAlertText}>
+                Mode démo activé : Serveur injoignable. Utilisation des données locales.
               </Text>
             </View>
           )}
@@ -106,9 +115,9 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
           {/* Erreur */}
           {(vm.showError || !!vm.errorMessage) && (
             <View style={styles.errorRow}>
-              <Ionicons name="alert-circle-outline" size={14} color="#B42318" />
+              <Ionicons name="alert-circle-outline" size={14} color="#3B82F6" />
               <Text style={styles.errorText}>
-                {vm.errorMessage || 'Format incorrect — exemple valide : 001I24'}
+                {vm.errorMessage || 'Format incorrect — exemple valide : 001I26'}
               </Text>
             </View>
           )}
@@ -140,7 +149,7 @@ const StudentLoginScreen: React.FC<StudentLoginScreenProps> = ({ onSuccess, onBa
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1F4E',
+    backgroundColor: '#0A192F',
   },
   content: {
     flex: 1,
@@ -174,7 +183,7 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#0D1F4E',
+    color: '#0A192F',
     textAlign: 'center',
     marginBottom: 8,
     fontFamily: 'PlusJakartaSans-Bold',
@@ -199,12 +208,12 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0D1F4E',
+    color: '#0A192F',
     fontFamily: 'Inter-SemiBold',
   },
   formatHint: {
     fontSize: 12,
-    color: '#1A4BA8',
+    color: '#3B82F6',
     fontFamily: 'Inter-SemiBold',
     backgroundColor: '#EAF4FF',
     paddingHorizontal: 8,
@@ -218,7 +227,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 22,
     fontWeight: '700',
-    color: '#0D1F4E',
+    color: '#0A192F',
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 5,
     textAlign: 'center',
@@ -226,12 +235,12 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   inputError: {
-    borderColor: '#FDA29B',
-    backgroundColor: '#FFF1F0',
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
   },
   inputValid: {
-    borderColor: '#6EE7B7',
-    backgroundColor: '#ECFDF5',
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
   },
   hintRow: {
     flexDirection: 'row',
@@ -247,6 +256,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     flex: 1,
   },
+  demoAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EAF4FF',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  demoAlertText: {
+    fontSize: 12,
+    color: '#1E3A8A',
+    fontFamily: 'Inter-Regular',
+    flex: 1,
+  },
   errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,19 +283,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   errorText: {
-    color: '#B42318',
+    color: '#3B82F6',
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     flex: 1,
   },
   loginButton: {
-    backgroundColor: '#1A4BA8',
+    backgroundColor: '#0A192F',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
     elevation: 4,
-    shadowColor: '#1A4BA8',
+    shadowColor: '#0A192F',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

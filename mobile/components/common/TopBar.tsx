@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     right: 8,
     width: 8,
     height: 8,
-    backgroundColor: '#FF4444',
+    backgroundColor: '#2D84E0',
     borderRadius: 4,
   },
 });

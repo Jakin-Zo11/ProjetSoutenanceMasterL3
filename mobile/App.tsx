@@ -2,190 +2,153 @@
  * App.tsx — Shell de l'application EMIT (MVVM)
  *
  * Ce fichier est un orchestrateur pur : il n'a plus d'état métier inline.
- * Toute la logique est déléguée à deux ViewModels :
- *   • useAppNavigation  → gestion de la pile d'écrans + bouton retour Android
- *   • useStudentSession → profil connecté, thème soumis, timer convocation
+ * Toute la logique est déléguée aux ViewModels de navigation et de session.
  *
  * Le rendu conditionnel `if (screen === '...')` est conservé tel quel :
  * c'est le pattern de navigation choisi pour ce projet (pas d'expo-router).
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   Pressable,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   View,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 // ── ViewModels ───────────────────────────────────────────────────────────────
-import { useAppNavigation } from './hooks/useAppNavigation';
+import { useAppNavigation, type MobileScreen } from './hooks/useAppNavigation';
 import { useStudentSession } from './hooks/useStudentSession';
 
 // ── Composants étudiant ──────────────────────────────────────────────────────
-import StudentHomeScreen    from './components/student/StudentHomeScreen';
-import StudentLoginScreen   from './components/student/StudentLoginScreen';
-import StudentThemeScreen   from './components/student/StudentThemeScreen';
+import StudentHomeScreen from './components/student/StudentHomeScreen';
+import StudentLoginScreen from './components/student/StudentLoginScreen';
+import StudentDefenseScreen from './components/student/StudentDefenseScreen';
 import StudentProfileScreen from './components/student/StudentProfileScreen';
-import MyConvocationScreen  from './components/student/MyConvocationScreen';
-import MyDefenseScreen      from './components/student/MyDefenseScreen';
-import MyPvScreen           from './components/student/MyPvScreen';
-import MyResultScreen       from './components/student/MyResultScreen';
-import MyThesisScreen       from './components/student/MyThesisScreen';
-import NotificationsScreen  from './components/student/NotificationsScreen';
 
-// ── Composants jury ──────────────────────────────────────────────────────────
-import JuryHomeScreen               from './components/jury/JuryHomeScreen';
-import JuryLoginScreen              from './components/jury/JuryLoginScreen';
-import JuryProfileScreen            from './components/jury/JuryProfileScreen';
-import DefenseDetailsScreen         from './components/jury/DefenseDetailsScreen';
-import EvaluationFormScreen         from './components/jury/EvaluationFormScreen';
-import HistoryScreen                from './components/jury/HistoryScreen';
-import MyStudentsScreen             from './components/jury/MyStudentsScreen';
-import SubmissionConfirmationScreen  from './components/jury/SubmissionConfirmationScreen';
-
-// ── Types partagés ───────────────────────────────────────────────────────────
-import type { MobileScreen } from './hooks/useAppNavigation';
-import type { SoutenanceJury } from './types/jury';
-import { useState } from 'react';
-
-// ── Type jury local (données sélectionnées pour DefenseDetails / Evaluation) ─
-
-type JuryDefense = {
-  studentId:   string;
-  studentName: string;
-  thesisTitle: string;
-  date:        string;
-  time:        string;
-  room:        string;
-  status:      string;
-};
-
-type JuryEvaluation = {
-  studentName: string;
-  date:        string;
-  scores:      Record<'oralPresentation' | 'memoryContent' | 'subjectMastery', string>;
-  remarks:     string;
-  average:     number;
-  mention:     string;
-  evaluee:     true;
-};
+// ── Composants jury ───────────────────────────────────────────────────────────
+import JuryLoginScreen from './components/jury/JuryLoginScreen';
+import JuryHomeScreen from './components/jury/JuryHomeScreen';
+import JuryProfileScreen from './components/jury/JuryProfileScreen';
+import DefenseDetailsScreen from './components/jury/DefenseDetailsScreen';
+import HistoryScreen from './components/jury/HistoryScreen';
+import MyStudentsScreen from './components/jury/MyStudentsScreen';
+import JuryTeamScreen from './components/jury/JuryTeamScreen';
+import EvaluationFormScreen from './components/jury/EvaluationFormScreen';
+import SubmissionConfirmationScreen from './components/jury/SubmissionConfirmationScreen';
+import { demoDefenses, type JuryEvaluation } from './types/defenseWorkflow';
+import { setUnauthorizedHandler } from './services/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  // ── ViewModels ─────────────────────────────────────────────────────────────
-  const nav     = useAppNavigation('select');
+  return (
+    <SafeAreaProvider>
+      <AppShell />
+    </SafeAreaProvider>
+  );
+}
+
+function AppShell() {
+  const nav = useAppNavigation();
   const session = useStudentSession();
+  useEffect(
+    () => setUnauthorizedHandler(async () => {
+      await session.logout();
+      nav.resetTo('student-access');
+    }),
+    [session.logout, nav.resetTo],
+  );
+  const [selectedJuryDefense, setSelectedJuryDefense] = useState<{
+    studentId: string;
+    studentName: string;
+    studentMatricule: string;
+    thesisTitle: string;
+    date: string;
+    time: string;
+    room: string;
+    status: string;
+    director?: string;
+    role?: string;
+    jury?: { name: string; role: string }[];
+    pdfUri?: string;
+  } | null>(null);
+  const [juryEvaluations, setJuryEvaluations] = useState<Record<string, JuryEvaluation>>(() => ({
+    '001I24': {
+      studentName: 'Jean Rakoto',
+      studentMatricule: '001I24',
+      date: '11 novembre 2026',
+      scores: { presentation: '4', technical: '8', answers: '4' },
+      remarks: 'Très bonne maîtrise du sujet et présentation claire.',
+      totalScore: 16,
+      mention: 'Très Bien',
+      evaluee: true,
+      status: 'validated',
+    },
+  }));
+  const [juryTeacher, setJuryTeacher] = useState('Dr. Randriamanana');
+  const [localAdminAlerts, setLocalAdminAlerts] = useState<string[]>([]);
 
-  // État jury resté ici car propre à l'espace jury (pas de ViewModel jury encore)
-  const [selectedJuryDefense, setSelectedJuryDefense] =
-    useState<JuryDefense | null>(null);
-  const [juryEvaluations, setJuryEvaluations] =
-    useState<Record<string, JuryEvaluation>>({});
+  const studentDefense = session.student
+    ? demoDefenses.find((item) => item.studentMatricule === session.student?.matricule) ?? {
+        ...demoDefenses[0],
+        id: `DEMO-${session.student.matricule}`,
+        studentMatricule: session.student.matricule,
+        studentName: session.student.name,
+        theme: session.student.themeTitle ?? demoDefenses[0].theme,
+      }
+    : undefined;
 
-  // ── Helpers de navigation ──────────────────────────────────────────────────
-  const goToStudentHome = () => nav.resetTo('student');
-  const goToJuryHome    = () => nav.resetTo('jury');
-
-  const navigate = (next: string) => nav.navigateTo(next as MobileScreen);
-
-  const navigateJuryTab = (next: string) => {
-    if (next === 'jury') { goToJuryHome(); return; }
-    nav.navigateTo(next as MobileScreen);
+  const navigate = (nextScreen: MobileScreen) => {
+    nav.navigateTo(nextScreen);
   };
 
-  // ── Écrans publics ─────────────────────────────────────────────────────────
+  const goToJuryHome = () => {
+    nav.resetTo('jury');
+  };
 
-  if (nav.screen === 'student-access') {
-    return (
-      <StudentLoginScreen
-        onSuccess={(profile) => { session.login(profile); nav.setScreen('student'); }}
-        onBack={() => nav.setScreen('select')}
-      />
-    );
-  }
-
-  if (nav.screen === 'jury-login') {
-    return (
-      <JuryLoginScreen
-        onSuccess={() => { nav.resetTo('jury'); }}
-        onBack={() => nav.setScreen('select')}
-      />
-    );
-  }
-
-  // ── Écrans étudiant ────────────────────────────────────────────────────────
-
-  if (nav.screen === 'student-theme') {
-    return (
-      <StudentThemeScreen
-        onBack={() => nav.setScreen('student')}
-        onSubmit={(theme) => { session.submitTheme(theme); nav.setScreen('student'); }}
-      />
-    );
-  }
-
-  if (nav.screen === 'student-defense') {
-    return <MyDefenseScreen onBack={goToStudentHome} onNavigate={navigate} />;
-  }
-  if (nav.screen === 'student-convocation') {
-    return <MyConvocationScreen onBack={goToStudentHome} onNavigate={navigate} />;
-  }
-  if (nav.screen === 'student-thesis') {
-    return (
-      <MyThesisScreen
-        submittedTheme={session.submittedTheme}
-        onBack={goToStudentHome}
-        onNavigate={navigate}
-      />
-    );
-  }
-  if (nav.screen === 'student-result') {
-    return <MyResultScreen onBack={goToStudentHome} onNavigate={navigate} />;
-  }
-  if (nav.screen === 'student-pv') {
-    return <MyPvScreen onBack={goToStudentHome} onNavigate={navigate} />;
-  }
-  if (nav.screen === 'student-notifications') {
-    return (
-      <NotificationsScreen
-        convocationReady={session.convocationReady}
-        onBack={goToStudentHome}
-        onNavigate={navigate}
-      />
-    );
-  }
-  if (nav.screen === 'student-profile') {
-    if (!session.student) { nav.setScreen('student-access'); return null; }
-    return (
-      <StudentProfileScreen
-        student={session.student}
-        onNavigate={navigate}
-        onExit={() => { session.logout(); nav.resetTo('select'); }}
-      />
-    );
-  }
+  const navigateTab = (nextScreen: string) => {
+    if (nextScreen === 'jury') {
+      goToJuryHome();
+      return;
+    }
+    navigate(nextScreen as MobileScreen);
+  };
 
   // ── Écrans jury ────────────────────────────────────────────────────────────
 
   if (nav.screen === 'jury') {
     return (
       <JuryHomeScreen
+        teacherName={juryTeacher}
+        evaluatedMatricules={Object.values(juryEvaluations)
+          .filter((evaluation) => evaluation.status === 'validated')
+          .map((evaluation) => evaluation.studentMatricule)}
+        adminAlerts={localAdminAlerts}
+        onAbsenceReported={(defense) => setLocalAdminAlerts((alerts) => [
+          ...alerts,
+          `Absence pour ${defense.etudiantNom}, le ${defense.date} à ${defense.heure} en ${defense.salle}.`,
+        ])}
         onNavigate={(nextScreen, params) => {
           if (params) {
             setSelectedJuryDefense({
               studentId:   params.id,
               studentName: params.etudiantNom,
+              studentMatricule: params.studentMatricule ?? params.id,
               thesisTitle: params.theme,
               date:        params.date,
               time:        params.heure,
               room:        params.salle,
               status:      params.statut,
+              director:    params.director,
+              role:        params.role,
+              jury:        params.jury,
+              pdfUri:      params.studentMatricule ? session.getPdfSubmission(params.studentMatricule)?.uri : undefined,
             });
           }
           if (nextScreen === 'jury') { goToJuryHome(); return; }
@@ -197,74 +160,107 @@ export default function App() {
   }
 
   if (nav.screen === 'jury-defense') {
-    const evaluation = selectedJuryDefense
-      ? juryEvaluations[selectedJuryDefense.studentId]
-      : undefined;
+    const evaluation = selectedJuryDefense ? juryEvaluations[selectedJuryDefense.studentMatricule] : undefined;
     return (
       <DefenseDetailsScreen
         onBack={goToJuryHome}
-        onNavigate={navigateJuryTab}
+        onNavigate={navigateTab}
         onEvaluate={() => nav.navigateTo('jury-evaluation')}
         defense={selectedJuryDefense ?? undefined}
         evaluation={evaluation}
+        onReportIssue={(message) => setLocalAdminAlerts((alerts) => [...alerts, message])}
       />
     );
   }
 
   if (nav.screen === 'jury-history') {
-    return (
-      <HistoryScreen
-        onBack={goToJuryHome}
-        onNavigate={navigateJuryTab}
-        evaluatedEvaluations={juryEvaluations}
-      />
+    const validatedEvaluations = Object.fromEntries(
+      Object.entries(juryEvaluations).filter(([, evaluation]) => evaluation.status === 'validated'),
     );
+    return <HistoryScreen onBack={goToJuryHome} onNavigate={navigateTab} evaluatedEvaluations={validatedEvaluations} />;
   }
-
-  if (nav.screen === 'jury-profile') {
-    return <JuryProfileScreen onBack={goToJuryHome} onNavigate={navigateJuryTab} />;
-  }
+  if (nav.screen === 'jury-team') return <JuryTeamScreen onBack={goToJuryHome} onNavigate={navigateTab} teacherName={juryTeacher} />;
+  if (nav.screen === 'jury-profile') return <JuryProfileScreen onBack={goToJuryHome} onNavigate={navigateTab} />;
 
   if (nav.screen === 'jury-students') {
     return (
       <MyStudentsScreen
         onBack={goToJuryHome}
-        onNavigate={navigateJuryTab}
+        onNavigate={navigateTab}
+        teacherName={juryTeacher}
+        evaluations={juryEvaluations}
+        notifications={[
+          ...localAdminAlerts,
+          ...demoDefenses
+            .filter((defense) => defense.jury.some((member) => member.name === juryTeacher))
+            .map((defense) => `Soutenance attribuée : ${defense.studentName}, le ${defense.date} à ${defense.time} — ${defense.room}.`),
+        ]}
         onOpenDefense={(s) => {
+          const assignedDefense = demoDefenses.find((item) => item.id === s.studentId);
           setSelectedJuryDefense({
             studentId:   s.studentId,
             studentName: s.studentName,
+            studentMatricule: s.studentMatricule,
             thesisTitle: s.thesisTitle,
             date:        s.date,
             time:        s.time,
             room:        s.room,
             status:      s.status,
+            director:    assignedDefense?.director,
+            role:        assignedDefense?.jury.find((member) => member.name === juryTeacher)?.role,
+            jury:        assignedDefense?.jury,
+            pdfUri:      session.getPdfSubmission(s.studentMatricule)?.uri,
           });
           nav.navigateTo('jury-defense');
+        }}
+        onEvaluate={(student) => {
+          const assignedDefense = demoDefenses.find((item) => item.id === student.studentId);
+          setSelectedJuryDefense({
+            studentId: student.studentId,
+            studentName: student.studentName,
+            studentMatricule: student.studentMatricule,
+            thesisTitle: student.thesisTitle,
+            date: student.date,
+            time: student.time,
+            room: student.room,
+            status: student.status,
+            director: assignedDefense?.director,
+            role: assignedDefense?.jury.find((member) => member.name === juryTeacher)?.role,
+            jury: assignedDefense?.jury,
+            pdfUri:      session.getPdfSubmission(student.studentMatricule)?.uri,
+          });
+          navigate('jury-evaluation');
         }}
       />
     );
   }
 
   if (nav.screen === 'jury-evaluation') {
-    const evaluation = selectedJuryDefense
-      ? juryEvaluations[selectedJuryDefense.studentId]
-      : undefined;
+    const evaluation = selectedJuryDefense ? juryEvaluations[selectedJuryDefense.studentMatricule] : undefined;
     return (
       <EvaluationFormScreen
         onBack={goToJuryHome}
-        onNavigate={navigateJuryTab}
+        onNavigate={navigateTab}
         evaluatedEvaluation={evaluation}
-        onSubmitted={(submitted) => {
+        onStatusChange={(updatedEvaluation) => {
+          if (!selectedJuryDefense) return;
+          setJuryEvaluations((current) => ({
+            ...current,
+            [updatedEvaluation.studentMatricule]: updatedEvaluation,
+          }));
+        }}
+        onSubmitted={(submittedEvaluation) => {
           if (!selectedJuryDefense) return;
           setJuryEvaluations((cur) => ({
             ...cur,
-            [selectedJuryDefense.studentId]: submitted,
+            [submittedEvaluation.studentMatricule]: submittedEvaluation,
           }));
-          setSelectedJuryDefense((cur) =>
-            cur ? { ...cur, status: 'evaluation_terminee' } : cur,
-          );
-          nav.navigateTo('jury-defense');
+          setLocalAdminAlerts((alerts) => [
+            ...alerts,
+            `Évaluation validée pour ${submittedEvaluation.studentName} : ${submittedEvaluation.totalScore.toFixed(1)}/20. Le PV de démonstration est disponible localement.`,
+          ]);
+          setSelectedJuryDefense((current) => current ? { ...current, status: 'evaluation_terminee' } : current);
+          navigate('jury-defense');
         }}
         defense={selectedJuryDefense ?? undefined}
       />
@@ -275,13 +271,31 @@ export default function App() {
     return <SubmissionConfirmationScreen onBack={goToJuryHome} />;
   }
 
-  // ── Accueil étudiant ───────────────────────────────────────────────────────
+  // ── Écrans étudiant ───────────────────────────────────────────────────────
+
+  if (nav.screen === 'student-access') {
+    return (
+      <StudentLoginScreen
+        onSuccess={(profile) => { session.login(profile); nav.resetTo('student'); }}
+        onBack={() => nav.setScreen('select')}
+      />
+    );
+  }
+
+  if (nav.screen === 'jury-login') {
+    return (
+      <JuryLoginScreen
+        onSuccess={(teacherName) => { setJuryTeacher(teacherName); nav.resetTo('jury'); }}
+        onBack={() => nav.setScreen('select')}
+      />
+    );
+  }
 
   if (nav.screen === 'student') {
     if (!session.student) {
       return (
         <StudentLoginScreen
-          onSuccess={(profile) => { session.login(profile); nav.setScreen('student'); }}
+          onSuccess={(profile) => { session.login(profile); nav.resetTo('student'); }}
           onBack={() => nav.setScreen('select')}
         />
       );
@@ -289,11 +303,43 @@ export default function App() {
     return (
       <StudentHomeScreen
         student={session.student}
-        themeSubmitted={session.themeSubmitted}
-        convocationReady={session.convocationReady}
-        onNavigate={navigate}
-        onOpenTheme={() => nav.navigateTo('student-theme')}
-        onExit={() => { session.logout(); nav.resetTo('select'); }}
+        pdfSubmission={session.pdfSubmission}
+        defense={studentDefense}
+        onSubmitPdf={session.submitPdf}
+        onNavigate={(screen) => nav.resetTo(screen)}
+        onExit={() => {
+          void session.logout().catch((error: unknown) => {
+            console.error('Impossible de supprimer le jeton étudiant du stockage sécurisé.', error);
+          });
+          nav.resetTo('select');
+        }}
+      />
+    );
+  }
+
+  if (nav.screen === 'student-defense' || nav.screen === 'student-results') {
+    if (!session.student) { nav.setScreen('student-access'); return null; }
+    return (
+      <StudentDefenseScreen
+        student={session.student}
+        defense={studentDefense}
+        evaluation={juryEvaluations[session.student.matricule]}
+        initialView={nav.screen === 'student-results' ? 'results' : 'convocation'}
+        onNavigate={(screen) => nav.resetTo(screen)}
+        onExit={() => nav.resetTo('student')}
+      />
+    );
+  }
+
+  if (nav.screen === 'student-profile') {
+    if (!session.student) { nav.setScreen('student-access'); return null; }
+    return (
+      <StudentProfileScreen
+        student={session.student}
+        defense={studentDefense}
+        pdfSubmission={session.pdfSubmission}
+        onNavigate={(screen) => nav.resetTo(screen)}
+        onExit={() => nav.resetTo('student')}
       />
     );
   }
@@ -302,7 +348,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1F4E" />
+      <StatusBar barStyle="light-content" backgroundColor="#0A192F" />
       <View style={styles.container}>
         <Image
           source={require('./assets/images/Logo-emit.png')}
@@ -321,11 +367,11 @@ export default function App() {
             onPress={() => nav.setScreen('student-access')}
             style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}
           >
-            <Ionicons name="school-outline" size={30} color="#2D84E0" />
+            <Ionicons name="school-outline" size={30} color="#3B82F6" />
             <View style={styles.optionCopy}>
               <Text style={styles.optionTitle}>Espace étudiant</Text>
               <Text style={styles.optionDescription}>
-                Convocation, soutenance, sujet et résultats
+                Dépôt PDF, convocation, résultats et PV
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#64748B" />
@@ -337,7 +383,7 @@ export default function App() {
             onPress={() => nav.setScreen('jury-login')}
             style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}
           >
-            <Ionicons name="clipboard-outline" size={30} color="#2D84E0" />
+            <Ionicons name="clipboard-outline" size={30} color="#3B82F6" />
             <View style={styles.optionCopy}>
               <Text style={styles.optionTitle}>Espace évaluateur</Text>
               <Text style={styles.optionDescription}>
@@ -359,7 +405,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0D1F4E',
+    backgroundColor: '#0A192F',
   },
   container: {
     flex: 1,
@@ -404,7 +450,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
   },
   optionTitle: {
-    color: '#0D1F4E',
+    color: '#0A192F',
     fontSize: 17,
     fontWeight: '800',
   },

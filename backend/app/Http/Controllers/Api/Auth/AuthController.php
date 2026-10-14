@@ -34,6 +34,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->getRoleNames()->first() ?? $user->role,
                 'roles' => $user->getRoleNames(),
             ],
             'message' => 'Connexion réussie.'
@@ -41,6 +42,11 @@ class AuthController extends Controller
     }
 
     public function me(Request $request)
+    {
+        return $this->profile($request);
+    }
+
+    public function profile(Request $request)
     {
         $user = $request->user();
         
@@ -50,6 +56,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->getRoleNames()->first() ?? $user->role,
                 'roles' => $user->getRoleNames(),
             ]
         ]);

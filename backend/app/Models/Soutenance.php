@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Soutenance extends Model
 {
@@ -51,6 +52,11 @@ class Soutenance extends Model
         return $this->hasOne(Convocation::class);
     }
 
+    public function evaluations(): HasMany
+    {
+        return $this->hasMany(Evaluation::class);
+    }
+
     // --- RELATION JURY ---
 
     public function enseignants()
@@ -60,7 +66,7 @@ class Soutenance extends Model
                     ->withTimestamps();
     }
 
-    // --- ACCESSEURS (En mémoire / Zero extra-query si 'enseignants' est chargé) ---
+    // --- ACCESSEURS ---
 
     public function getPresidentAttribute()
     {

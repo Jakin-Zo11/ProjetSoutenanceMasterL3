@@ -54,7 +54,7 @@ class RoomApiTest extends TestCase
                 'success',
                 'message',
                 'data' => [
-                    '*' => ['id', 'name', 'building', 'capacity', 'is_active']
+                    '*' => ['id', 'name', 'building', 'location', 'capacity', 'is_active']
                 ]
             ]);
     }
@@ -68,6 +68,7 @@ class RoomApiTest extends TestCase
         $roomData = [
             'name' => 'Salle Test',
             'building' => 'Bâtiment Test',
+            'location' => 'Aile nord',
             'capacity' => 40,
             'is_active' => true,
         ];
@@ -82,7 +83,7 @@ class RoomApiTest extends TestCase
                 'message' => 'Salle créée avec succès.',
             ]);
 
-        $this->assertDatabaseHas('rooms', ['name' => 'Salle Test']);
+        $this->assertDatabaseHas('rooms', ['name' => 'Salle Test', 'location' => 'Aile nord']);
     }
 
     public function test_admin_can_show_room()
@@ -115,6 +116,7 @@ class RoomApiTest extends TestCase
         $updateData = [
             'name' => 'Nouveau Nom',
             'building' => 'Nouveau Bâtiment',
+            'location' => 'Aile sud',
             'capacity' => 50,
             'is_active' => true,
         ];
@@ -129,7 +131,7 @@ class RoomApiTest extends TestCase
                 'message' => 'Salle mise à jour avec succès.',
             ]);
 
-        $this->assertDatabaseHas('rooms', ['name' => 'Nouveau Nom']);
+        $this->assertDatabaseHas('rooms', ['name' => 'Nouveau Nom', 'location' => 'Aile sud']);
     }
 
     public function test_admin_can_delete_room()

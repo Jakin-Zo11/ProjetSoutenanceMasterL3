@@ -1,30 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
 import AdminLayout from './layouts/AdminLayout';
 import LoginPage from './components/pages/LoginPage';
 import Dashboard from './pages/admin/Dashboard';
-import EtudiantsPage from './pages/admin/EtudiantsPage';
-import EnseignantsPage from './pages/admin/EnseignantsPage';
-import JurysPage from './pages/admin/JurysPage';
-import SallesPage from './pages/admin/SallesPage';
-import SoutenancesPage from './pages/admin/SoutenancesPage';
-import CreneauxPage from './pages/admin/CreneauxPage';
-import CalendrierPage from './pages/admin/CalendrierPage';
-import AffectationJuryPage from './pages/admin/AffectationJuryPage';
-import EvaluationsPage from './pages/admin/EvaluationsPage';
-import ResultatsPage from './pages/admin/ResultatsPage';
+import DepotsPage from './pages/admin/DepotsPage';
+import PlanificationPage from './pages/admin/PlanificationPage';
 import PvPage from './pages/admin/PvPage';
+import EvaluationPage from './pages/admin/EvaluationPage';
+import CreneauxPage from './pages/admin/CreneauxPage';
+import CalendarPage from './components/pages/CalendarPage';
+import { DefensesAndRoomsPage, EvaluatorsPage } from './pages/admin/CombinedAdminViews';
+import { AdminDataProvider } from './context/AdminDataContext';
 import { GestionIndisponibilitesCalendar } from './pages/enseignant/GestionIndisponibilitesCalendar';
-import './App.css';
 import PlanningDashboard from './pages/planification/PlanningDashboard';
 import AffectationJurysPage from './pages/planification/AffectationJurysPage';
-
 import ConvocationPreview from './pages/planification/ConvocationPreview';
-import ReplanificationModal from './pages/planification/ReplanificationModal';// utilise en modal, pas en route directe
 import DetectionConflitsPanel from './pages/planification/DetectionConflitsPanel';
 import ParametresPlanificationPage from './pages/planification/ParametresPlanificationPage';
-// avec les autres routes de planification :
+import './App.css';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -38,30 +31,37 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AdminLayout />}>
-          <Route index element={<Navigate to="/admin" replace />} />
-          <Route path="admin" element={<Dashboard />} />
-          <Route path="admin/etudiants" element={<EtudiantsPage />} />
-          <Route path="admin/enseignants" element={<EnseignantsPage />} />
-          <Route path="admin/jurys" element={<JurysPage />} />
-          <Route path="admin/salles" element={<SallesPage />} />
-          <Route path="admin/soutenances" element={<SoutenancesPage />} />
-          <Route path="admin/creneaux" element={<CreneauxPage />} />
-          <Route path="admin/calendrier" element={<CalendrierPage />} />
-          <Route path="admin/affectation-jury" element={<AffectationJuryPage />} />
-          <Route path="admin/evaluations" element={<EvaluationsPage />} />
-          <Route path="admin/resultats" element={<ResultatsPage />} />
-          <Route path="admin/pv" element={<PvPage />} />
-          <Route path="admin/planification/affectation-jurys" element={<AffectationJurysPage />} />
-          <Route path="admin/planification/convocation/:id" element={<ConvocationPreview />} />
-          <Route path="admin/planification/conflits" element={<DetectionConflitsPanel />} />
-          <Route path="admin/planification/parametres" element={<ParametresPlanificationPage />} />
+      <AdminDataProvider>
+        <Routes>
+          <Route path="/" element={<AdminLayout onLogout={handleLogout} />}>
+            <Route index element={<Navigate to="/admin" replace />} />
+            <Route path="admin" element={<Dashboard />} />
+            <Route path="admin/etudiants" element={<DepotsPage />} />
+            <Route path="admin/evaluateurs" element={<EvaluatorsPage />} />
+            <Route path="admin/enseignants-jurys" element={<Navigate to="/admin/evaluateurs" replace />} />
+            <Route path="admin/soutenances-salles" element={<DefensesAndRoomsPage />} />
+            <Route path="admin/creneaux" element={<CreneauxPage />} />
+            <Route path="admin/calendrier" element={<CalendarPage />} />
+            <Route path="admin/planification" element={<PlanificationPage />} />
+            <Route path="admin/affectation" element={<Navigate to="/admin/planification" replace />} />
+            <Route path="admin/evaluations" element={<PvPage initialTab="evaluations" />} />
+            <Route path="admin/suivi-evaluations" element={<EvaluationPage />} />
+            <Route path="admin/resultats-pv" element={<PvPage initialTab="results" />} />
+            <Route path="admin/depots" element={<Navigate to="/admin/etudiants" replace />} />
+            <Route path="admin/pv" element={<Navigate to="/admin/resultats-pv" replace />} />
 
-          {/* TODO (Lauris) : routes planification a activer une fois les pages codees */}
-          <Route path="admin/planification" element={<PlanningDashboard />} />
-        </Route>
-      </Routes>
+            {/* Module Planification & convocations */}
+            <Route path="admin/planification/calendrier" element={<PlanningDashboard />} />
+            <Route path="admin/planification/affectation-jurys" element={<AffectationJurysPage />} />
+            <Route path="admin/planification/convocation/:id" element={<ConvocationPreview />} />
+            <Route path="admin/planification/conflits" element={<DetectionConflitsPanel />} />
+            <Route path="admin/planification/parametres" element={<ParametresPlanificationPage />} />
+            <Route path="enseignant/indisponibilites" element={<GestionIndisponibilitesCalendar enseignantId={1} />} />
+
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Route>
+        </Routes>
+      </AdminDataProvider>
     </BrowserRouter>
   );
 };

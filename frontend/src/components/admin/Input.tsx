@@ -33,12 +33,12 @@ const Input: React.FC<InputProps> = ({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className={`w-full px-4 py-3 bg-[#F0F5FB] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D84E0] focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-          error ? 'border-[#DC2626]' : 'border-[#DDEAF7]'
+          error ? 'border-[#1E3A8A]' : 'border-[#DDEAF7]'
         }`}
         style={{ fontFamily: 'Inter, sans-serif' }}
       />
       {error && (
-        <p className="mt-1 text-xs text-[#DC2626]" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <p className="mt-1 text-xs text-[#1E3A8A]" style={{ fontFamily: 'Inter, sans-serif' }}>
           {error}
         </p>
       )}

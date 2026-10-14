@@ -165,8 +165,8 @@ const NtsoaDashboard = () => {
         label: 'Publié'
       },
       annulee: {
-        bg: 'bg-[#FFF1F1]',
-        text: 'text-[#991B1B]',
+        bg: 'bg-[#EFF6FF]',
+        text: 'text-[#1E3A8A]',
         label: 'Annulée'
       },
       reprogrammee: {
@@ -180,8 +180,8 @@ const NtsoaDashboard = () => {
         label: 'Validé'
       },
       rejete: {
-        bg: 'bg-[#FFF1F1]',
-        text: 'text-[#991B1B]',
+        bg: 'bg-[#EFF6FF]',
+        text: 'text-[#1E3A8A]',
         label: 'Rejeté'
       }
     };

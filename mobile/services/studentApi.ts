@@ -1,53 +1,55 @@
 /**
- * Service API — Espace étudiant
- *
- * Utilise fetch natif (pas besoin d'axios).
- *
- * Token en mémoire pour la session courante.
- *
- * ⚠️  Pour persister le token entre les redémarrages de l'app, installez :
- *       npx expo install expo-secure-store
- *     puis remplacez tokenStore par SecureStore.setItemAsync / getItemAsync.
- *
- * Routes backend :
- *   POST  /api/v1/student/login   → connexion par matricule
- *   GET   /api/v1/student/profile → profil de l'étudiant connecté
- *   PATCH /api/v1/student/profile → mise à jour email / telephone
+ * Local-only student service. This module deliberately performs no network I/O.
  */
 
-// ─── Configuration ────────────────────────────────────────────────────────────
+const DEMO_STUDENTS = [
+  {
+    name: 'Jean Rakoto',
+    email: 'jean.rakoto@emit.mg',
+    telephone: '+261 34 00 000 01',
+    formation: 'Master 2 Informatique de Gestion',
+    promotion: 'Master 2 · 2026',
+    themeTitle: 'Optimisation des algorithmes de machine learning pour la prédiction de la demande énergétique',
+    company: 'JIRAMA',
+  },
+  {
+    name: 'Marie Randrianasolo',
+    email: 'marie.randrianasolo@emit.mg',
+    telephone: '+261 34 00 000 02',
+    formation: 'Master 2 Informatique de Gestion',
+    promotion: 'Master 2 · 2026',
+    themeTitle: 'Développement d’une application mobile de gestion des stocks pour les PME',
+    company: 'Tech Mada',
+  },
+  {
+    name: 'Paul Ravelonarivo',
+    email: 'paul.ravelonarivo@emit.mg',
+    telephone: '+261 34 00 000 03',
+    formation: 'Master 2 Informatique de Gestion',
+    promotion: 'Master 2 · 2026',
+    themeTitle: 'Analyse des données de trafic routier pour l’optimisation urbaine',
+    company: 'Commune Urbaine de Fianarantsoa',
+  },
+  {
+    name: 'Fara Rasoa',
+    email: 'fara.rasoa@emit.mg',
+    telephone: '+261 34 00 000 04',
+    formation: 'Master 2 Informatique de Gestion',
+    promotion: 'Master 2 · 2026',
+    themeTitle: 'Système de reconnaissance faciale pour le contrôle d’accès',
+    company: 'EMIT Fianarantsoa',
+  },
+  {
+    name: 'Luc Andriamanitra',
+    email: 'luc.andriamanitra@emit.mg',
+    telephone: '+261 34 00 000 05',
+    formation: 'Master 2 Informatique de Gestion',
+    promotion: 'Master 2 · 2026',
+    themeTitle: 'Plateforme e-learning adaptative basée sur l’intelligence artificielle',
+    company: 'Orange Madagascar',
+  },
+] as const;
 
-/**
- * URL de base de l'API Laravel.
- * • Émulateur Android : 10.0.2.2 pointe vers localhost de la machine hôte.
- * • Appareil physique   : remplacez par l'IP LAN du serveur (ex: 192.168.1.x).
- * • Variable d'env      : EXPO_PUBLIC_API_URL dans .env
- */
-const API_URL =
-  (typeof process !== 'undefined' && (process.env as Record<string, string | undefined>).EXPO_PUBLIC_API_URL) ||
-  'http://10.0.2.2:8000/api';
-
-// ─── Stockage du token en mémoire ────────────────────────────────────────────
-// Simple et sans dépendance. Le token est perdu si l'app est tuée.
-// Pour la persistance, remplacer par expo-secure-store.
-
-let _studentToken: string | null = null;
-
-function saveToken(token: string): void {
-  _studentToken = token;
-}
-
-function getToken(): string | null {
-  return _studentToken;
-}
-
-function clearToken(): void {
-  _studentToken = null;
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/** Données étudiant telles que retournées par le backend. */
 export interface StudentApiData {
   id: number;
   /** Matricule toujours string — ex : "001I24" — jamais converti en nombre */
@@ -75,112 +77,57 @@ export interface StudentProfileResponse {
   student: StudentApiData;
 }
 
-// ─── Helpers internes ─────────────────────────────────────────────────────────
+let activeStudent: StudentApiData | null = null;
+let localToken: string | null = null;
 
-function buildHeaders(withAuth: boolean): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
+function createStudent(matricule: string): StudentApiData {
+  const digits = matricule.match(/\d+/)?.[0] ?? '';
+  const index = digits ? Math.max(0, Number(digits.slice(0, 3)) - 1) % DEMO_STUDENTS.length : 0;
+  const sample = DEMO_STUDENTS[index];
+
+  return {
+    id: index + 1,
+    matricule,
+    ...sample,
+    status: 'actif',
+    promotion_id: 1,
   };
-  if (withAuth) {
-    const token = getToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
-  return headers;
 }
 
-/**
- * Lance fetch, parse JSON et lève une Error lisible si la réponse n'est pas ok.
- */
-async function request<T>(
-  path: string,
-  options: RequestInit & { auth?: boolean },
-): Promise<T> {
-  const { auth = false, ...fetchOptions } = options;
-  const headers = buildHeaders(auth);
+export async function loginWithMatricule(matricule: string): Promise<StudentLoginResponse> {
+  const normalizedMatricule = matricule.trim().toUpperCase();
+  if (!normalizedMatricule) throw new Error('Saisissez un matricule pour continuer.');
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...fetchOptions,
-    headers: { ...headers, ...(fetchOptions.headers as Record<string, string> ?? {}) },
-  });
-
-  // Toujours parser JSON même en cas d'erreur (le backend renvoie un message)
-  let json: Record<string, unknown> = {};
-  try {
-    json = await response.json();
-  } catch {
-    // réponse vide ou non-JSON
-  }
-
-  if (!response.ok) {
-    // Extraire le premier message d'erreur disponible
-    const errors = json?.errors as Record<string, string[]> | undefined;
-    const firstError = errors ? Object.values(errors)[0]?.[0] : undefined;
-    const message = (json?.message as string) || firstError || `Erreur ${response.status}`;
-    throw new Error(message);
-  }
-
-  return json as T;
+  activeStudent = createStudent(normalizedMatricule);
+  localToken = `demo-student-${normalizedMatricule}`;
+  return {
+    success: true,
+    message: 'Connexion de démonstration réussie.',
+    token: localToken,
+    student: { ...activeStudent },
+  };
 }
 
-// ─── API publique ─────────────────────────────────────────────────────────────
-
-/**
- * Connexion étudiant par matricule.
- *
- * Envoie exactement : { "matricule": "001I24" }
- * Le matricule est traité comme string, jamais converti en nombre.
- *
- * Sauvegarde le token en mémoire pour les appels suivants.
- */
-export async function loginWithMatricule(
-  matricule: string,
-): Promise<StudentLoginResponse> {
-  // Sécurité : on ne passe jamais Number(matricule)
-  const payload = JSON.stringify({ matricule: String(matricule) });
-
-  const data = await request<StudentLoginResponse>('/v1/student/login', {
-    method: 'POST',
-    body: payload,
-  });
-
-  if (data.token) {
-    saveToken(data.token);
-  }
-
-  return data;
-}
-
-/**
- * Récupère le profil de l'étudiant connecté.
- * Nécessite un token valide (après loginWithMatricule).
- */
 export async function getStudentProfile(): Promise<StudentProfileResponse> {
-  return request<StudentProfileResponse>('/v1/student/profile', {
-    method: 'GET',
-    auth: true,
-  });
+  if (!activeStudent || !localToken) {
+    throw new Error('Aucune session étudiant locale n’est active.');
+  }
+  return { success: true, student: { ...activeStudent } };
 }
 
-/**
- * Met à jour uniquement les champs modifiables.
- * Le backend ignore et refuse matricule / name — double protection.
- */
 export async function updateStudentProfile(
   data: Partial<Pick<StudentApiData, 'email' | 'telephone'>>,
 ): Promise<StudentProfileResponse> {
-  return request<StudentProfileResponse>('/v1/student/profile', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-    auth: true,
-  });
+  if (!activeStudent || !localToken) {
+    throw new Error('Aucune session étudiant locale n’est active.');
+  }
+  activeStudent = { ...activeStudent, ...data };
+  return { success: true, student: { ...activeStudent } };
 }
 
-/** Déconnexion locale — efface le token en mémoire. */
 export function logoutStudent(): void {
-  clearToken();
+  activeStudent = null;
+  localToken = null;
 }
 
 /** Indique si un token étudiant est actif en mémoire. */

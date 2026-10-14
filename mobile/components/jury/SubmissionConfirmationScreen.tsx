@@ -60,7 +60,7 @@ const SubmissionConfirmationScreen: React.FC<ScreenProps> = ({ onBack }) => {
           
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Date de soumission</Text>
-            <Text style={styles.infoValue}>20 Décembre 2024 à 10:30</Text>
+            <Text style={styles.infoValue}>11 novembre 2026 à 09:00</Text>
           </View>
 
           <View style={styles.infoItem}>

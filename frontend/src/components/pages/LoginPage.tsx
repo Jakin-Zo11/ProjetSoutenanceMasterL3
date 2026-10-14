@@ -20,7 +20,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setTimeout(() => {
       onLogin();
       setIsLoading(false);
-    }, 1500);
+    }, 200);
   };
 
   const features = [

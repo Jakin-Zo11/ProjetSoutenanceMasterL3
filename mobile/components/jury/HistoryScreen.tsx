@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import TopBar from '../common/TopBar';
 import BottomNav from '../common/BottomNav';
-import { juryTabItems, juryTabBadges, JURY_ACCENT_RED } from './juryNavigation';
+import { juryTabItems, juryTabBadges, JURY_ACCENT_BLUE } from './juryNavigation';
 
 interface HistoryItemProps {
   studentName: string;
@@ -53,53 +53,27 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ studentName, date, role, grad
 interface ScreenProps {
   onBack: () => void;
   onNavigate: (screen: string) => void;
-  evaluatedEvaluations?: Record<string, { studentName: string; date: string; average: number; mention: string; evaluee: true }>;
+  evaluatedEvaluations?: Record<string, { studentName: string; date: string; totalScore: number; mention: string; evaluee: true }>;
 }
 
 const HistoryScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, evaluatedEvaluations = {} }) => {
   // Données locales (Mock Data) — fiches d'évaluation avec notes saisies,
   // moyennes calculées et mentions. Aucun appel API / serveur externe.
-  const getMentionLabel = (average: number) => {
-    if (average >= 16) return 'Très Bien';
-    if (average >= 14) return 'Bien';
-    if (average >= 10) return 'Assez Bien';
+  const getMentionLabel = (totalScore: number) => {
+    if (totalScore >= 16) return 'Très Bien';
+    if (totalScore >= 14) return 'Bien';
+    if (totalScore >= 10) return 'Assez Bien';
     return 'Ajourné / Rattrapage';
   };
   const evaluatedHistory = Object.entries(evaluatedEvaluations).map(([studentId, evaluation]) => ({
     studentName: evaluation.studentName || studentId,
     date: evaluation.date,
     role: 'Évaluateur',
-    grade: `${evaluation.average.toFixed(1)}/20`,
-    mention: evaluation.mention || getMentionLabel(evaluation.average),
+    grade: `${evaluation.totalScore.toFixed(1)}/20`,
+    mention: evaluation.mention || getMentionLabel(evaluation.totalScore),
     status: 'Terminée',
   }));
-  const historyData = [
-    ...evaluatedHistory,
-    {
-      studentName: 'Jean Dupont',
-      date: '16 Déc 2024',
-      role: 'Examinateur',
-      grade: '16.5/20',
-      mention: 'Très Bien',
-      status: 'Soumis',
-    },
-    {
-      studentName: 'Alice Martin',
-      date: '15 Déc 2024',
-      role: 'Président',
-      grade: '15.5/20',
-      mention: 'Bien',
-      status: 'Soumis',
-    },
-    {
-      studentName: 'Pierre Leroy',
-      date: '15 Déc 2024',
-      role: 'Rapporteur',
-      grade: '13.5/20',
-      mention: 'Assez Bien',
-      status: 'Archivé',
-    },
-  ];
+  const historyData = evaluatedHistory;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -111,6 +85,9 @@ const HistoryScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, evaluatedEva
           {historyData.map((item, index) => (
             <HistoryItem key={index} {...item} />
           ))}
+          {historyData.length === 0 && (
+            <Text style={styles.emptyText}>Aucune évaluation validée pour le moment.</Text>
+          )}
         </View>
       </ScrollView>
 
@@ -118,7 +95,7 @@ const HistoryScreen: React.FC<ScreenProps> = ({ onBack, onNavigate, evaluatedEva
         items={juryTabItems}
         activeTab="evaluations"
         badges={juryTabBadges}
-        accentColor={JURY_ACCENT_RED}
+        accentColor={JURY_ACCENT_BLUE}
         onTabChange={(tab) => {
           if (tab === 'home') onBack();
           if (tab === 'defenses') onNavigate('jury-students');
@@ -140,6 +117,12 @@ const styles = StyleSheet.create({
   historyList: {
     padding: 20,
     gap: 12,
+  },
+  emptyText: {
+    color: Colors.light.icon,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    paddingVertical: 32,
   },
   historyItem: {
     flexDirection: 'row',

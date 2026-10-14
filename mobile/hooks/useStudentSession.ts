@@ -1,53 +1,56 @@
 /**
  * ViewModel — Session étudiant courante.
  *
- * Extrait de App.tsx : gère le profil connecté, le thème soumis,
- * le timer de convocation et la réinitialisation de session.
+ * Gère le profil connecté et les dépôts PDF locaux associés au matricule.
  *
  * (MVVM — ViewModel partagé, consommé par App.tsx et les écrans étudiant)
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { StudentProfile } from '../types/etudiant';
+import { logoutStudent } from '../services/studentApi';
 
-const CONVOCATION_DELAY_MS = 15_000;
+export interface StudentPdfSubmission {
+  studentMatricule: string;
+  name: string;
+  uri: string;
+  submittedAt: string;
+}
 
 export function useStudentSession() {
   const [student, setStudent]               = useState<StudentProfile | null>(null);
-  const [themeSubmitted, setThemeSubmitted] = useState(false);
-  const [submittedTheme, setSubmittedTheme] = useState('');
-  const [convocationReady, setConvocationReady] = useState(false);
-
-  // Déclenche le timer de convocation 15 s après la soumission du thème
-  useEffect(() => {
-    if (!themeSubmitted) return undefined;
-    const timer = setTimeout(() => setConvocationReady(true), CONVOCATION_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [themeSubmitted]);
+  const [pdfSubmissions, setPdfSubmissions] = useState<Record<string, StudentPdfSubmission>>({});
+  const pdfSubmission = student ? pdfSubmissions[student.matricule] ?? null : null;
 
   const login = useCallback((profile: StudentProfile) => {
     setStudent(profile);
   }, []);
 
-  const submitTheme = useCallback((theme: string) => {
-    setSubmittedTheme(theme);
-    setThemeSubmitted(true);
-  }, []);
+  const submitPdf = useCallback((submission: { name: string; uri: string }) => {
+    if (!student) throw new Error('Une session étudiant est requise pour enregistrer le dépôt.');
+    setPdfSubmissions((current) => ({
+      ...current,
+      [student.matricule]: {
+        ...submission,
+        studentMatricule: student.matricule,
+        submittedAt: new Date().toISOString(),
+      },
+    }));
+  }, [student]);
 
-  const logout = useCallback(() => {
+  const getPdfSubmission = useCallback((matricule: string) => pdfSubmissions[matricule] ?? null, [pdfSubmissions]);
+
+  const logout = useCallback(async () => {
     setStudent(null);
-    setThemeSubmitted(false);
-    setSubmittedTheme('');
-    setConvocationReady(false);
+    await logoutStudent();
   }, []);
 
   return {
     student,
-    themeSubmitted,
-    submittedTheme,
-    convocationReady,
+    pdfSubmission,
     login,
-    submitTheme,
+    submitPdf,
+    getPdfSubmission,
     logout,
   };
 }

@@ -67,6 +67,16 @@ class StudentAuthController extends Controller
         ]);
     }
 
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Déconnexion réussie.',
+        ]);
+    }
+
     /**
      * Formate les données étudiant à retourner au mobile.
      * Le matricule est toujours retourné comme string.

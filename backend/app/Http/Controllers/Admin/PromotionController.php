@@ -4,153 +4,72 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Promotion;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PromotionController extends Controller
 {
-    /**
-     * Afficher la liste des promotions.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        try {
-            $promotions = Promotion::with('formation')->get();
-            return response()->json([
-                'success' => true,
-                'message' => 'Liste des promotions récupérée avec succès.',
-                'data' => $promotions
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des promotions.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Liste des promotions récupérée avec succès.',
+            'data' => Promotion::with('formation')->orderBy('name')->get(),
+        ]);
     }
 
-    /**
-     * Créer une nouvelle promotion.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'formation_id' => 'required|exists:formations,id',
-                'year' => 'required|string',
-                'name' => 'required|string',
-            ]);
+        $validated = $request->validate([
+            'formation_id' => ['required', 'integer', 'exists:formations,id'],
+            'year' => ['required', 'string', 'max:32'],
+            'name' => ['required', 'string', 'max:255'],
+            'mention' => ['required', 'string', 'max:255'],
+        ]);
 
-            $promotion = Promotion::create($validated);
+        $promotion = Promotion::create($validated);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Promotion créée avec succès.',
-                'data' => $promotion
-            ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation.',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création de la promotion.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion créée avec succès.',
+            'data' => $promotion->load('formation'),
+        ], 201);
     }
 
-    /**
-     * Afficher une promotion spécifique.
-     *
-     * @param  \App\Models\Promotion  $promotion
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function show(Promotion $promotion)
+    public function show(Promotion $promotion): JsonResponse
     {
-        try {
-            $promotion->load('formation');
-            return response()->json([
-                'success' => true,
-                'message' => 'Détails de la promotion récupérés avec succès.',
-                'data' => $promotion
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération de la promotion.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Détails de la promotion récupérés avec succès.',
+            'data' => $promotion->load('formation'),
+        ]);
     }
 
-    /**
-     * Mettre à jour une promotion.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Promotion  $promotion
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function update(Request $request, Promotion $promotion)
+    public function update(Request $request, Promotion $promotion): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'formation_id' => 'exists:formations,id',
-                'year' => 'string',
-                'name' => 'string',
-            ]);
+        $validated = $request->validate([
+            'formation_id' => ['sometimes', 'required', 'integer', 'exists:formations,id'],
+            'year' => ['sometimes', 'required', 'string', 'max:32'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'mention' => ['sometimes', 'required', 'string', 'max:255'],
+        ]);
 
-            $promotion->update($validated);
+        $promotion->update($validated);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Promotion mise à jour avec succès.',
-                'data' => $promotion
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation.',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour de la promotion.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion mise à jour avec succès.',
+            'data' => $promotion->refresh()->load('formation'),
+        ]);
     }
 
-    /**
-     * Supprimer une promotion.
-     *
-     * @param  \App\Models\Promotion  $promotion
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function destroy(Promotion $promotion)
+    public function destroy(Promotion $promotion): JsonResponse
     {
-        try {
-            $promotion->delete();
+        $promotion->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Promotion supprimée avec succès.'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression de la promotion.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Promotion supprimée avec succès.',
+        ]);
     }
 }

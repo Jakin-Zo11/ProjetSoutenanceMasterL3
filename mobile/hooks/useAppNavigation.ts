@@ -15,19 +15,15 @@ import { BackHandler, ToastAndroid, Platform } from 'react-native';
 export type MobileScreen =
   | 'select'
   | 'student-access'
-  | 'student-theme'
   | 'student'
   | 'student-defense'
-  | 'student-convocation'
-  | 'student-thesis'
-  | 'student-result'
-  | 'student-pv'
-  | 'student-notifications'
+  | 'student-results'
   | 'student-profile'
   | 'jury-login'
   | 'jury'
   | 'jury-defense'
   | 'jury-history'
+  | 'jury-team'
   | 'jury-students'
   | 'jury-evaluation'
   | 'jury-confirmation'
@@ -37,6 +33,7 @@ const JURY_SCREENS: MobileScreen[] = [
   'jury',
   'jury-defense',
   'jury-history',
+  'jury-team',
   'jury-students',
   'jury-evaluation',
   'jury-confirmation',

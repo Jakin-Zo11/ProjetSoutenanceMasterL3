@@ -7,10 +7,10 @@ import { mockRooms } from './rooms';
 export const mockReports: Report[] = [
   {
     id: 1,
-    reference: 'PV-2025-001',
+    reference: 'PV-2026-001',
     studentId: 4,
     defenseId: 4,
-    dateGeneration: '2025-01-12',
+    dateGeneration: '2026-01-12',
     roomId: 1,
     status: 'Généré',
     student: mockStudents[3],
@@ -19,10 +19,10 @@ export const mockReports: Report[] = [
   },
   {
     id: 2,
-    reference: 'PV-2025-002',
+    reference: 'PV-2026-002',
     studentId: 5,
     defenseId: 5,
-    dateGeneration: '2025-01-10',
+    dateGeneration: '2026-01-10',
     roomId: 2,
     status: 'Généré',
     student: mockStudents[4],
@@ -31,7 +31,7 @@ export const mockReports: Report[] = [
   },
   {
     id: 3,
-    reference: 'PV-2025-003',
+    reference: 'PV-2026-003',
     studentId: 1,
     defenseId: 1,
     dateGeneration: '',
@@ -43,7 +43,7 @@ export const mockReports: Report[] = [
   },
   {
     id: 4,
-    reference: 'PV-2025-004',
+    reference: 'PV-2026-004',
     studentId: 2,
     defenseId: 2,
     dateGeneration: '',
