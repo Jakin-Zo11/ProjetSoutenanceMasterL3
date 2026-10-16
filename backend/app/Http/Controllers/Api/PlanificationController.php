@@ -107,9 +107,7 @@ class PlanificationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Soutenance::with([
-            'affectationsJury.enseignant'
-        ]);
+        $query = Soutenance::with(['affectationsJury.enseignant', 'etudiant', 'salle']);
 
         if ($request->filled('statut')) {
             $query->where(

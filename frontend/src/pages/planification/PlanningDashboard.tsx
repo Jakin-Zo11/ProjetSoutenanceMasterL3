@@ -14,6 +14,40 @@ const STATUT_COLORS: Record<string, string> = {
   annulee: '#ef4444',
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  president: 'Président',
+  rapporteur: 'Rapporteur',
+  examinateur: 'Examinateur',
+};
+const normaliser = (r: string) => r.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const heure = (iso: string) =>
+  new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+
+const renderEvent = (arg: any) => {
+  const s: Soutenance = arg.event.extendedProps.soutenance;
+  const jurys = s.affectations_jury ?? [];
+  return (
+    <div className="soutenance-card" style={{ borderLeftColor: STATUT_COLORS[s.statut] ?? '#2563eb' }}>
+      <div className="sc-top">
+        {heure(s.date_debut as string)} – {heure(s.date_fin as string)}
+        {s.salle ? ` · ${s.salle.name}` : ''}
+      </div>
+      <div className="sc-name">{s.etudiant?.name ?? `Étudiant #${s.etudiant_id}`}</div>
+      <div className="sc-theme">
+        {s.etudiant?.matricule ? `${s.etudiant.matricule} · ` : ''}
+        {s.theme ?? 'Sans thème'}
+      </div>
+      {jurys.length > 0 && (
+        <div className="sc-jury">
+          {jurys
+            .map((j) => `${j.enseignant?.name ?? '?'} (${ROLE_LABELS[normaliser(j.role)] ?? j.role})`)
+            .join(' · ')}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PlanningDashboard: React.FC = () => {
   const [soutenances, setSoutenances] = useState<Soutenance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,13 +107,23 @@ const PlanningDashboard: React.FC = () => {
       title: s.theme ?? `Soutenance #${s.id}`,
       start: s.date_debut as string,
       end: s.date_fin as string,
-      backgroundColor: STATUT_COLORS[s.statut] ?? '#94a3b8',
-      borderColor: STATUT_COLORS[s.statut] ?? '#94a3b8',
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
       extendedProps: { soutenance: s },
     }));
 
   return (
     <div style={{ padding: '1.5rem' }}>
+      <style>{`
+  .fc .fc-timegrid-slot { height: 4em; }
+  .fc .fc-timegrid-event { box-shadow: none; }
+  .soutenance-card { background: #eaf2ff; border-left: 3px solid #2563eb; border-radius: 6px;
+    padding: 4px 6px; height: 100%; overflow: hidden; color: #0f172a; font-size: 11px; line-height: 1.3; }
+  .sc-top { font-weight: 600; color: #1d4ed8; }
+  .sc-name { font-weight: 700; font-size: 12px; margin-top: 2px; }
+  .sc-theme { color: #475569; margin-top: 2px; }
+  .sc-jury { color: #1d4ed8; margin-top: 3px; }
+`}</style>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>
         Planning des soutenances
       </h1>
@@ -157,6 +201,8 @@ const PlanningDashboard: React.FC = () => {
           )}
 
           <FullCalendar
+            eventContent={renderEvent}
+            slotDuration="00:30:00"
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
             headerToolbar={{

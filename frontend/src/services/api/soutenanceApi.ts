@@ -14,6 +14,10 @@ export interface Soutenance {
   date_debut: string | null;
   date_fin: string | null;
   statut: 'en_attente' | 'planifiee' | 'en_cours' | 'terminee' | 'annulee';
+
+  etudiant?: { id: number; name: string; matricule?: string | null } | null;
+  salle?: { id: number; name: string } | null;
+  affectations_jury?: { id: number; role: string; enseignant?: { name: string } | null }[];
 }
 
 export async function getPlanning(): Promise<Soutenance[]> {
