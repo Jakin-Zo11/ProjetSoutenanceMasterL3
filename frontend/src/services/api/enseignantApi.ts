@@ -7,7 +7,8 @@ export interface Enseignant {
 }
 
 export async function getEnseignants(): Promise<Enseignant[]> {
-  const response = await apiClient.get<{ data?: Enseignant[] } | Enseignant[]>('/admin/enseignants');
+  // Ajout de '/v1' pour correspondre au groupe de routes Laravel
+  const response = await apiClient.get<{ data?: Enseignant[] } | Enseignant[]>('/v1/admin/enseignants');
   const data = response.data;
   return Array.isArray(data) ? data : data.data ?? [];
 }
