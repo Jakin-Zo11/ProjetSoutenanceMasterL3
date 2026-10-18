@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+import { creneauxApi, type Creneau } from '../services/api/creneaux';
 export interface Student {
   id: number;
   matricule: string;
@@ -166,8 +167,6 @@ interface AdminDataContextType {
   defenseSlots: DefenseSlot[];
   timeSlots: TimeSlot[];
   rooms: Room[];
-  absences: EvaluatorAbsence[];
-  notifications: TeamNotification[];
   assignJuryToSlot: (slotId: number, juryIds: number[]) => void;
   replaceJuryMember: (slotId: number, oldTeacherId: number, newTeacherId: number) => void;
   uploadStudentPdf: (matricule: string, fileUrl: string) => Promise<void>;
@@ -183,7 +182,7 @@ interface AdminDataContextType {
   updateDefenseSlot: (id: number, slot: Partial<Omit<DefenseSlot, 'id'>>) => Promise<void>;
   sendConvocations: (slotId: number) => Promise<void>;
   assignJuryBatch: (slotIds: number[], members: JuryMember[]) => Promise<void>;
-  declareAbsence: (input: DeclareAbsenceInput) => Promise<EvaluatorAbsence>;
+
 }
 
 // ─── Context ───────────────────────────────────────────────────────────────────
@@ -271,6 +270,41 @@ export const AdminDataProvider: React.FC<AdminDataProviderProps> = ({ children }
     { id: 8, prenom: 'Tiana', nom: 'Rajaona', specialite: 'Informatique', grade: 'Professeur', email: 'tiana.rajaona@emit.mg', telephone: '+261 34 00 000 08', status: 'Actif', isAvailable: true, role: 'ENCADREUR' },
   ]);
 
+  const [timeSlotsFromApi, setTimeSlotsFromApi] = useState<TimeSlot[]>([]);
+  const [apiError, setApiError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    creneauxApi
+      .list()
+      .then((data: Creneau[]) => {
+        if (active) {
+          const mapped: TimeSlot[] = data.map((creneau) => ({
+            id: creneau.id,
+            startTime: creneau.heure_debut,
+            endTime: creneau.heure_fin,
+          }));
+          setTimeSlotsFromApi(mapped);
+          setApiError('');
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setApiError(
+            error instanceof Error ? error.message : 'Impossible de charger les créneaux.');
+        }
+      })
+      .finally(() => {
+        if (active) setTimeSlotsFromApi((prev) => {
+          // Garde les anciens si nouvelle requête en cours
+          return prev;
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const [plannings, setPlannings] = useState<Planning[]>([
     {
       id: 1,
@@ -337,7 +371,7 @@ export const AdminDataProvider: React.FC<AdminDataProviderProps> = ({ children }
     },
   ]);
 
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(timeSlotsFromApi.length > 0 ? timeSlotsFromApi : [
     { id: 1, startTime: '08:00', endTime: '10:00' },
     { id: 2, startTime: '10:15', endTime: '12:15' },
     { id: 3, startTime: '13:30', endTime: '15:30' },
@@ -383,12 +417,12 @@ export const AdminDataProvider: React.FC<AdminDataProviderProps> = ({ children }
     const mention = totalScore >= 16 ? 'Très Bien' : totalScore >= 14 ? 'Bien' : totalScore >= 12 ? 'Assez Bien' : 'Passable';
     
     const newEvaluation: Evaluation = {
-      id: Date.now(),
-      slotId,
-      studentId: plannings.find(p => p.id === slotId)?.studentId || 0,
-      ...scoreData,
-      totalScore,
-    };
+  id: Date.now(),
+  ...scoreData,
+  slotId,
+  studentId: plannings.find(p => p.id === slotId)?.studentId || 0,
+  totalScore,
+};
 
     setEvaluations(prev => [...prev, newEvaluation]);
 
