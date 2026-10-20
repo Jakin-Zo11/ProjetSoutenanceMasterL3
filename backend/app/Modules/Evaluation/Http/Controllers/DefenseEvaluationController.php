@@ -2,8 +2,9 @@
 
 namespace App\Modules\Evaluation\Http\Controllers;
 
+use App\Models\Evaluation;
+use App\Models\Soutenance;
 use App\Http\Controllers\Controller;
-use App\Modules\Evaluation\Models\DefenseEvaluation;
 use App\Modules\Evaluation\Models\EvaluationGrid;
 use App\Modules\Evaluation\Models\EvaluationScore;
 use Illuminate\Http\Request;
@@ -13,111 +14,149 @@ class DefenseEvaluationController extends Controller
 {
     public function assigned(Request $request)
     {
-        return DefenseEvaluation::with(['grid.criteria', 'scores.criterion'])
-            ->where('jury_id', $request->user()->id)
+        // Nouveau flux : retourner les évaluations (notes globales) du jury connecté
+        // en utilisant le modèle Evaluation (racine) qui a soutenance_id → soutenances.id
+        $evaluations = Evaluation::where('jury_user_id', $request->user()->id)
+            ->with('soutenance')
             ->latest()
             ->get();
+
+        return $evaluations->map(function ($evaluation) {
+            return [
+                'id' => $evaluation->id,
+                'soutenance_id' => $evaluation->soutenance_id,
+                // Informations de la soutenance via la relation
+                'student_name' => $evaluation->soutenance->etudiantNom ?? 'Étudiant inconnu',
+                'theme' => $evaluation->soutenance->theme ?? 'Thème inconnu',
+                'date' => $evaluation->soutenance->date ? $evaluation->soutenance->date->format('d/m/Y') : 'Date non disponible',
+                'heure' => 'Heure non disponible',
+                'salle' => $evaluation->soutenance->room ? $evaluation->soutenance->room->numero_salle ?? 'Salle non disponible' : 'Salle non disponible',
+                'status' => $evaluation->status ?? 'draft',
+                'note_generale' => $evaluation->note_generale ?? $evaluation->note_finale ?? 0,
+                'commentary' => $evaluation->comment ?? '',
+            ];
+        })->values();
     }
 
     public function store(Request $request)
     {
+        // Nouveau flux : créer une évaluation avec note globale seulement
+        // Pas de grille, pas de critères
         $this->requireJury($request);
-        $data = $request->validate([
-            'defense_id' => ['required', 'integer', 'min:1'],
-            'evaluation_grid_id' => ['required', 'integer', 'exists:evaluation_grids,id'],
-        ]);
-        $grid = EvaluationGrid::findOrFail($data['evaluation_grid_id']);
-        abort_unless($grid->is_active, 422, 'La grille sélectionnée est inactive.');
 
-        $evaluation = DefenseEvaluation::firstOrCreate(
-            ['defense_id' => $data['defense_id'], 'jury_id' => $request->user()->id],
-            ['evaluation_grid_id' => $grid->id]
+        $data = $request->validate([
+            'soutenance_id' => ['required', 'integer', 'exists:soutenances,id'],
+            'note_generale' => ['required', 'numeric', 'min:0', 'max:20'],
+            'commentaire' => ['nullable', 'string'],
+        ]);
+
+        $evaluation = Evaluation::firstOrCreate(
+            ['soutenance_id' => $data['soutenance_id'], 'jury_user_id' => $request->user()->id],
+            [
+                'note_generale' => $data['note_generale'],
+                'commentaire' => $data['commentaire'],
+                'status' => 'draft',
+            ]
         );
 
-        return response()->json($evaluation->load(['grid.criteria', 'scores.criterion']), $evaluation->wasRecentlyCreated ? 201 : 200);
-    }
-
-    public function show(Request $request, DefenseEvaluation $evaluation)
-    {
-        $this->canView($request, $evaluation);
-        return $evaluation->load(['grid.criteria', 'scores.criterion', 'jury:id,name,email']);
-    }
-
-    public function saveScores(Request $request, DefenseEvaluation $evaluation)
-    {
-        $this->canEdit($request, $evaluation);
-        $data = $request->validate([
-            'comment' => ['nullable', 'string'],
-            'scores' => ['required', 'array', 'min:1'],
-            'scores.*.criterion_id' => ['required', 'integer', 'distinct'],
-            'scores.*.score' => ['required', 'numeric', 'min:0'],
-            'scores.*.comment' => ['nullable', 'string'],
-        ]);
-
-        $criteria = $evaluation->grid->criteria()->get()->keyBy('id');
-        DB::transaction(function () use ($evaluation, $data, $criteria) {
-            foreach ($data['scores'] as $item) {
-                $criterion = $criteria->get($item['criterion_id']);
-                if (!$criterion) {
-                    abort(422, 'Un critère ne fait pas partie de cette grille.');
-                }
-                if ((float) $item['score'] > (float) $criterion->max_score) {
-                    abort(422, "La note du critère {$criterion->name} dépasse son maximum.");
-                }
-                EvaluationScore::updateOrCreate(
-                    ['defense_evaluation_id' => $evaluation->id, 'evaluation_criterion_id' => $criterion->id],
-                    ['score' => $item['score'], 'weighted_score' => $item['score'] * $criterion->coefficient, 'comment' => $item['comment'] ?? null]
-                );
+        // Vérification que le jury connecté est bien l'auteur de l'évaluation
+        if ($evaluation->jury_user_id !== $request->user()->id) {
+            // Si ce n'est pas le cas, on vérifie si c'est un admin
+            if (!in_array($request->user()->role, ['admin_scolarite', 'president_jury'], true)) {
+                abort(403, 'Seul le jury concerné ou un administrateur peut créer une évaluation.');
             }
-            $evaluation->update(['comment' => $data['comment'] ?? $evaluation->comment]);
-            $this->recalculate($evaluation);
-        });
-
-        return $evaluation->fresh(['grid.criteria', 'scores.criterion']);
-    }
-
-    public function validateEvaluation(Request $request, DefenseEvaluation $evaluation)
-    {
-        $this->canEdit($request, $evaluation);
-        $criterionIds = $evaluation->grid->criteria()->pluck('id')->sort()->values();
-        $scoredIds = $evaluation->scores()->pluck('evaluation_criterion_id')->sort()->values();
-        if ($criterionIds->isEmpty() || $criterionIds->all() !== $scoredIds->all()) {
-            return response()->json(['message' => 'Toutes les notes de la grille sont obligatoires avant validation.'], 422);
         }
-        $this->recalculate($evaluation);
-        $evaluation->update(['status' => 'validated', 'validated_at' => now()]);
 
-        return $evaluation->fresh(['grid.criteria', 'scores.criterion']);
-    }
-
-    public function lock(Request $request, DefenseEvaluation $evaluation)
-    {
-        abort_unless($request->user()->role === 'admin', 403, 'Action réservée à un administrateur.');
-        abort_unless($evaluation->status === 'validated', 422, 'Seule une évaluation validée peut être verrouillée.');
-        $evaluation->update(['status' => 'locked', 'locked_at' => now()]);
-
-        return $evaluation->fresh(['grid.criteria', 'scores.criterion']);
-    }
-
-    private function recalculate(DefenseEvaluation $evaluation): void
-    {
-        $scores = $evaluation->scores()->get();
-        $evaluation->update([
-            'total_score' => $scores->sum('score'),
-            'weighted_score' => $scores->sum('weighted_score'),
+        return response()->json([
+            'id' => $evaluation->id,
+            'soutenance_id' => $evaluation->soutenance_id,
+            'note_generale' => $evaluation->note_generale,
+            'commentaire' => $evaluation->commentaire,
+            'status' => $evaluation->status,
         ]);
     }
 
-    private function canView(Request $request, DefenseEvaluation $evaluation): void
+    public function show(Request $request, $id)
     {
-        abort_unless($request->user()->role === 'admin' || $evaluation->jury_id === $request->user()->id, 403);
+        // Nouveau flux : afficher une évaluation (note globale)
+        $evaluation = Evaluation::with('soutenance')
+            ->findOrFail($id);
+
+        // Vérifier que le jury connecté en est bien l'auteur
+        if ($evaluation->jury_user_id !== $request->user()->id) {
+            abort(403, 'Cette évaluation ne vous appartient pas.');
+        }
+
+        return response()->json([
+            'id' => $evaluation->id,
+            'soutenance_id' => $evaluation->soutenance_id,
+            'student_name' => $evaluation->soutenance->etudiantNom ?? 'Étudiant inconnu',
+            'theme' => $evaluation->soutenance->theme ?? 'Thème inconnu',
+            'date' => $evaluation->soutenance->date ? $evaluation->soutenance->date->format('d/m/Y') : 'Date non disponible',
+            'heure' => 'Heure non disponible',
+            'salle' => $evaluation->soutenance->room ? $evaluation->soutenance->room->numero_salle ?? 'Salle non disponible' : 'Salle non disponible',
+            'note_generale' => $evaluation->note_generale ?? 0,
+            'commentary' => $evaluation->commentaire ?? '',
+            'status' => $evaluation->status,
+        ]);
     }
 
-    private function canEdit(Request $request, DefenseEvaluation $evaluation): void
+    public function updateNote(Request $request, $id)
     {
-        $this->requireJury($request);
-        abort_unless($evaluation->jury_id === $request->user()->id, 403, 'Cette évaluation appartient à un autre jury.');
-        abort_if($evaluation->status !== 'draft', 422, 'Cette évaluation ne peut plus être modifiée.');
+        // Nouveau flux : mettre à jour la note globale d'un jury
+        $evaluation = Evaluation::findOrFail($id);
+
+        // Vérifier que le jury connecté en est l'auteur
+        if ($evaluation->jury_user_id !== $request->user()->id) {
+            abort(403, 'Cette évaluation ne vous appartient pas.');
+        }
+
+        $data = $request->validate([
+            'note_generale' => ['required', 'numeric', 'min:0', 'max:20'],
+            'commentaire' => ['nullable', 'string'],
+        ]);
+
+        $evaluation->note_generale = $data['note_generale'];
+        $evaluation->commentaire = $data['commentaire'];
+        $evaluation->save();
+
+        return response()->json([
+            'id' => $evaluation->id,
+            'note_generale' => $evaluation->note_generale,
+            'commentaire' => $evaluation->commentaire,
+            'status' => $evaluation->status,
+        ]);
+    }
+
+    public function validateDeliberation(Request $request, $id)
+    {
+        // Délibération : personne autorisée à valider le résultat
+        // Vérification formelle du rôle admin_scolarite ou president_jury
+        abort_unless(in_array($request->user()->role, ['admin_scolarite', 'president_jury'], true), 403, 'Seule l administration peut valider la délibération.');
+
+        $evaluation = Evaluation::findOrFail($id);
+
+        $data = $request->validate([
+            'decision' => ['required', 'string'],
+            'mention' => ['nullable', 'string'],
+            'commentaire_deliberation' => ['nullable', 'string'],
+        ]);
+
+        $evaluation->status = 'validated';
+        $evaluation->decision = $data['decision'];
+        $evaluation->mention = $data['mention'] ?? null;
+        $evaluation->commentaire_deliberation = $data['commentaire_deliberation'];
+        $evaluation->validated_at = now();
+        $evaluation->save();
+
+        return response()->json([
+            'id' => $evaluation->id,
+            'status' => $evaluation->status,
+            'decision' => $evaluation->decision,
+            'mention' => $evaluation->mention,
+            'commentaire_deliberation' => $evaluation->commentaire_deliberation,
+            'validated_at' => $evaluation->validated_at,
+        ]);
     }
 
     private function requireJury(Request $request): void

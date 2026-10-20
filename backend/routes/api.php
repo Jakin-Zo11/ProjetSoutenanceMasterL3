@@ -68,6 +68,15 @@ Route::prefix('v1/auth')->group(function () {
     });
 });
 
+// Routes CRUD créneaux (accessibles aux administrateurs)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/creneaux', [App\Http\Controllers\Api\CreneauController::class, 'index']);
+    Route::post('/creneaux', [App\Http\Controllers\Api\CreneauController::class, 'store']);
+    Route::put('/creneaux/{id}', [App\Http\Controllers\Api\CreneauController::class, 'update']);
+    Route::patch('/creneaux/{id}/statut', [App\Http\Controllers\Api\CreneauController::class, 'updateStatut']);
+    Route::delete('/creneaux/{id}', [App\Http\Controllers\Api\CreneauController::class, 'destroy']);
+});
+
 // Student Routes (connexion par matricule)
 Route::prefix('v1/student')->group(function () {
     Route::post('/login', [StudentAuthController::class, 'login']);
@@ -84,6 +93,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/students', [AdminUserController::class, 'students']);
     Route::get('/admin/teachers', [AdminUserController::class, 'teachers']);
     Route::get('/simulation/planifications', [PlanificationSimulationController::class, 'index']);
+});
+
+// Évaluations Jury (note globale /20)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/v1/evaluations/assigned', [App\Modules\Evaluation\Http\Controllers\DefenseEvaluationController::class, 'assigned']);
+    Route::post('/v1/evaluations', [App\Modules\Evaluation\Http\Controllers\DefenseEvaluationController::class, 'store']);
+    Route::put('/v1/evaluations/{id}', [App\Modules\Evaluation\Http\Controllers\DefenseEvaluationController::class, 'updateNote']);
+    Route::post('/v1/evaluations/{id}/validate', [App\Modules\Evaluation\Http\Controllers\DefenseEvaluationController::class, 'validateDeliberation']);
 });
 
 // Admin Routes

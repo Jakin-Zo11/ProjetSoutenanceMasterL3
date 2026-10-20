@@ -22,6 +22,7 @@ class Evaluation extends Model
         'note_manuscrit',
         'note_reponses',
         'note_finale',
+        'note_generale',
         'remarques',
         'status',
     ];

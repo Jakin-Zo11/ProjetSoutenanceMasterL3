@@ -1,6 +1,8 @@
+
 import axios, { type AxiosError } from 'axios';
 
-const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
 export const apiClient = axios.create({
   baseURL,
@@ -12,17 +14,23 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ message?: string }>) => {
-    const message = error.response?.data?.message
-      ?? (error.response ? 'Une erreur est survenue lors de la requête.' : 'Connexion au serveur impossible.');
+    const message =
+      error.response?.data?.message ??
+      (error.response
+        ? 'Une erreur est survenue lors de la requête.'
+        : 'Connexion au serveur impossible.');
+
     return Promise.reject(new Error(message));
   },
 );

@@ -36,10 +36,10 @@ export const EvaluationPage: React.FC = () => {
         time: slot.timeStart,
         room: slot.room,
         status: slot.status,
-        president: evaluation?.evaluatorSubmissions?.find((s) => s.role === 'PRESIDENT') ?? { isCompleted: false },
-        rapporteur: evaluation?.evaluatorSubmissions?.find((s) => s.role === 'RAPPORTEUR') ?? { isCompleted: false },
-        examiner: evaluation?.evaluatorSubmissions?.find((s) => s.role === 'EXAMINER') ?? { isCompleted: false },
-        encadreur: evaluation?.evaluatorSubmissions?.find((s) => s.role === 'ENCADREUR') ?? { isCompleted: false },
+        president: { isCompleted: false },
+        rapporteur: { isCompleted: false },
+        examiner: { isCompleted: false },
+        encadreur: { isCompleted: false },
         partialScore: evaluation?.totalScore ? `${evaluation.totalScore}/20` : '—',
         finalScore: pv?.score ? `${pv.score}/20` : '—',
         isFinalized,
@@ -155,8 +155,7 @@ export const EvaluationPage: React.FC = () => {
               );
             }},
           ]}
-          data={evaluationRows}
-          pagination={{ pageSize: 10 }}
+         data={evaluationRows}
         />
       </div>
 
