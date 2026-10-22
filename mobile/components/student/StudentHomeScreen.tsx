@@ -15,35 +15,55 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import TopBar from '../common/TopBar';
 import StudentTabNavigator from './StudentTabNavigator';
+
 import type { StudentProfile } from '../../types/etudiant';
-import type { DemoDefense } from '../../types/defenseWorkflow';
-import type { StudentPdfSubmission } from '../../hooks/useStudentSession';
 import {
-  getDefense,
-  getDocuments,
   getProfile,
   getThesis,
-  type StudentSimulationDefense,
-  type StudentSimulationDocuments,
-  type StudentSimulationProfile,
-  type StudentSimulationThesis,
+  getDefense,
+  getDocuments,
 } from '../../services/studentService';
+import type {
+  StudentThesis,
+  StudentDefense,
+  StudentDocuments,
+} from '../../services/studentService';
+
+
+interface StudentPdfSubmission {
+  name: string;
+  uri: string;
+}
 
 interface StudentHomeScreenProps {
   student: StudentProfile;
-  defense?: DemoDefense;
+  defense?: {
+    theme?: string | null;
+  } | null;
   pdfSubmission: StudentPdfSubmission | null;
   onSubmitPdf: (submission: { name: string; uri: string }) => void;
-  onNavigate: (screen: 'student' | 'student-defense' | 'student-results' | 'student-profile') => void;
+  onNavigate: (
+    screen: 'student' | 'student-defense' | 'student-results' | 'student-profile'
+  ) => void;
   onExit: () => void;
 }
 
+
 interface StudentSimulationData {
-  profile: StudentSimulationProfile;
-  thesis: StudentSimulationThesis | null;
-  defense: StudentSimulationDefense | null;
-  documents: StudentSimulationDocuments;
+  profile: {
+    name: string;
+    email: string;
+    matricule: string;
+    formation: string | null;
+    niveau: string | null;
+    promotion: string | null;
+    parcours?: string | null;
+  };
+  thesis: StudentThesis | null;
+  defense: StudentDefense | null;
+  documents: StudentDocuments | null;
 }
+
 
 const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
   student,
@@ -58,9 +78,11 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
   const [apiError, setApiError] = useState('');
   const [simulationData, setSimulationData] = useState<StudentSimulationData | null>(null);
 
+ 
   const loadSimulationData = useCallback(async () => {
     setIsLoadingApiData(true);
     setApiError('');
+
     try {
       const [profile, thesis, defenseData, documents] = await Promise.all([
         getProfile(),
@@ -68,33 +90,27 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
         getDefense(),
         getDocuments(),
       ]);
-      setSimulationData({ profile, thesis, defense: defenseData, documents });
+
+      setSimulationData({
+        profile,
+        thesis,
+        defense: defenseData,
+        documents,
+      });
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : 'Impossible de charger les données étudiant.');
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de charger les données étudiant.'
+      );
     } finally {
       setIsLoadingApiData(false);
     }
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    Promise.all([getProfile(), getThesis(), getDefense(), getDocuments()])
-      .then(([profile, thesis, defenseData, documents]) => {
-        if (isMounted) setSimulationData({ profile, thesis, defense: defenseData, documents });
-      })
-      .catch((error: unknown) => {
-        if (isMounted) {
-          setApiError(error instanceof Error ? error.message : 'Impossible de charger les données étudiant.');
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoadingApiData(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    useEffect(() => {
+    void loadSimulationData();
+  }, [loadSimulationData]);
 
   const selectPdf = async () => {
     setIsPickingPdf(true);
@@ -134,13 +150,6 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
             <Text style={styles.eyebrow}>ESPACE ÉTUDIANT</Text>
             <Text style={styles.studentName}>{simulationData?.profile.name ?? student.name}</Text>
           </View>
-        </View>
-
-        <View style={styles.quickActions}>
-          <QuickAction icon="cloud-upload-outline" label="Déposer" onPress={selectPdf} />
-          <QuickAction icon="calendar-outline" label="Convocation" onPress={() => onNavigate('student-defense')} />
-          <QuickAction icon="document-text-outline" label="Résultats" onPress={() => onNavigate('student-results')} />
-          <QuickAction icon="person-outline" label="Profil" onPress={() => onNavigate('student-profile')} />
         </View>
 
         <View style={styles.contentSheet}>
@@ -278,15 +287,35 @@ const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
               </View>
             )}
 
-            <View style={styles.card}>
-              <View style={styles.sectionHeading}>
-                <Ionicons name="documents-outline" size={21} color={COLORS.sky} />
-                <Text style={styles.sectionTitle}>Documents et résultats</Text>
-              </View>
-              <InfoRow label="Convocation" value={simulationData.documents.convocation.statut} />
-              <InfoRow label="Résultat final" value={simulationData.documents.resultat_final} />
-              <InfoRow label="Procès-verbal" value={simulationData.documents.pv.statut} />
-            </View>
+            
+<View style={styles.card}>
+  <View style={styles.sectionHeading}>
+    <Ionicons name="documents-outline" size={21} color={COLORS.sky} />
+    <Text style={styles.sectionTitle}>Documents et résultats</Text>
+  </View>
+
+  {simulationData.documents ? (
+    <>
+      <InfoRow
+        label="Convocation"
+        value={simulationData.documents.convocation.statut}
+      />
+      <InfoRow
+        label="Résultat final"
+        value={simulationData.documents.resultat_final}
+      />
+      <InfoRow
+        label="Procès-verbal"
+        value={simulationData.documents.pv.statut}
+      />
+    </>
+  ) : (
+    <Text style={styles.helper}>
+      Les documents ne sont pas encore disponibles.
+    </Text>
+  )}
+</View>
+
           </>
         )}
 
