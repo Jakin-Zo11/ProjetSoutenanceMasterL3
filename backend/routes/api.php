@@ -19,18 +19,14 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 use App\Http\Controllers\Api\Student\StudentAuthController;
 use App\Http\Controllers\Api\Student\StudentProfileController;
-<<<<<<< HEAD
 use App\Http\Controllers\Api\PlanificationController;
 use App\Http\Controllers\Api\IndisponibiliteController;
 use App\Http\Controllers\Api\AffectationJuryController;
 use App\Http\Controllers\Api\ConvocationController;
 use App\Http\Controllers\Api\ParametrePlanificationController;
 use App\Http\Controllers\Api\PlanningValidationController;
-=======
 use App\Http\Controllers\Api\Student\StudentSimulationController;
 use App\Http\Controllers\Api\Student\StudentPortalController;
-
->>>>>>> b5fd8647ace4c61a064ed21d9a276327c5b9ec25
 /*
 |--------------------------------------------------------------------------
 | API Routes
