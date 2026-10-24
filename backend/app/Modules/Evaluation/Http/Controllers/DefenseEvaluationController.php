@@ -2,165 +2,236 @@
 
 namespace App\Modules\Evaluation\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Evaluation;
 use App\Models\Soutenance;
-use App\Http\Controllers\Controller;
-use App\Modules\Evaluation\Models\EvaluationGrid;
-use App\Modules\Evaluation\Models\EvaluationScore;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DefenseEvaluationController extends Controller
 {
+    /**
+     * Liste des evaluations du jury connecte.
+     */
     public function assigned(Request $request)
     {
-        // Nouveau flux : retourner les évaluations (notes globales) du jury connecté
-        // en utilisant le modèle Evaluation (racine) qui a soutenance_id → soutenances.id
-        $evaluations = Evaluation::where('jury_user_id', $request->user()->id)
-            ->with('soutenance')
+        $evaluations = Evaluation::where(
+            'jury_user_id',
+            $request->user()->id
+        )
+            ->with([
+                'soutenance.depot.etudiant',
+                'soutenance.room',
+            ])
             ->latest()
             ->get();
 
-        return $evaluations->map(function ($evaluation) {
-            return [
-                'id' => $evaluation->id,
-                'soutenance_id' => $evaluation->soutenance_id,
-                // Informations de la soutenance via la relation
-                'student_name' => $evaluation->soutenance->etudiantNom ?? 'Étudiant inconnu',
-                'theme' => $evaluation->soutenance->theme ?? 'Thème inconnu',
-                'date' => $evaluation->soutenance->date ? $evaluation->soutenance->date->format('d/m/Y') : 'Date non disponible',
-                'heure' => 'Heure non disponible',
-                'salle' => $evaluation->soutenance->room ? $evaluation->soutenance->room->numero_salle ?? 'Salle non disponible' : 'Salle non disponible',
-                'status' => $evaluation->status ?? 'draft',
-                'note_generale' => $evaluation->note_generale ?? $evaluation->note_finale ?? 0,
-                'commentary' => $evaluation->comment ?? '',
-            ];
-        })->values();
+        return response()->json(
+            $evaluations->map(function ($evaluation) {
+                $soutenance = $evaluation->soutenance;
+                $depot = $soutenance?->depot;
+
+                return [
+                    'id' => $evaluation->id,
+                    'soutenance_id' => $evaluation->soutenance_id,
+                    'student_name' => $depot?->etudiant?->name
+                        ?? 'Etudiant inconnu',
+                    'theme' => $depot?->title
+                        ?? 'Theme inconnu',
+                    'date' => $soutenance?->date
+                        ? $soutenance->date->format('d/m/Y')
+                        : 'Date non disponible',
+                    'heure' => $soutenance?->date
+                        ? $soutenance->date->format('H:i')
+                        : 'Heure non disponible',
+                    'salle' => $soutenance?->room?->name
+                        ?? 'Salle non disponible',
+                    'status' => $evaluation->status,
+                    'note_generale' => $evaluation->note_finale,
+                    'commentary' => $evaluation->remarques ?? '',
+                ];
+            })->values()
+        );
     }
 
+    /**
+     * Creer une evaluation.
+     */
     public function store(Request $request)
     {
-        // Nouveau flux : créer une évaluation avec note globale seulement
-        // Pas de grille, pas de critères
         $this->requireJury($request);
 
         $data = $request->validate([
-            'soutenance_id' => ['required', 'integer', 'exists:soutenances,id'],
-            'note_generale' => ['required', 'numeric', 'min:0', 'max:20'],
+            'soutenance_id' => [
+                'required',
+                'integer',
+                'exists:soutenances,id',
+            ],
+            'note_generale' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:20',
+            ],
             'commentaire' => ['nullable', 'string'],
         ]);
 
-        $evaluation = Evaluation::firstOrCreate(
-            ['soutenance_id' => $data['soutenance_id'], 'jury_user_id' => $request->user()->id],
-            [
-                'note_generale' => $data['note_generale'],
-                'commentaire' => $data['commentaire'],
-                'status' => 'draft',
-            ]
-        );
-
-        // Vérification que le jury connecté est bien l'auteur de l'évaluation
-        if ($evaluation->jury_user_id !== $request->user()->id) {
-            // Si ce n'est pas le cas, on vérifie si c'est un admin
-            if (!in_array($request->user()->role, ['admin_scolarite', 'president_jury'], true)) {
-                abort(403, 'Seul le jury concerné ou un administrateur peut créer une évaluation.');
-            }
-        }
-
-        return response()->json([
-            'id' => $evaluation->id,
-            'soutenance_id' => $evaluation->soutenance_id,
-            'note_generale' => $evaluation->note_generale,
-            'commentaire' => $evaluation->commentaire,
-            'status' => $evaluation->status,
-        ]);
-    }
-
-    public function show(Request $request, $id)
-    {
-        // Nouveau flux : afficher une évaluation (note globale)
-        $evaluation = Evaluation::with('soutenance')
-            ->findOrFail($id);
-
-        // Vérifier que le jury connecté en est bien l'auteur
-        if ($evaluation->jury_user_id !== $request->user()->id) {
-            abort(403, 'Cette évaluation ne vous appartient pas.');
-        }
-
-        return response()->json([
-            'id' => $evaluation->id,
-            'soutenance_id' => $evaluation->soutenance_id,
-            'student_name' => $evaluation->soutenance->etudiantNom ?? 'Étudiant inconnu',
-            'theme' => $evaluation->soutenance->theme ?? 'Thème inconnu',
-            'date' => $evaluation->soutenance->date ? $evaluation->soutenance->date->format('d/m/Y') : 'Date non disponible',
-            'heure' => 'Heure non disponible',
-            'salle' => $evaluation->soutenance->room ? $evaluation->soutenance->room->numero_salle ?? 'Salle non disponible' : 'Salle non disponible',
-            'note_generale' => $evaluation->note_generale ?? 0,
-            'commentary' => $evaluation->commentaire ?? '',
-            'status' => $evaluation->status,
-        ]);
-    }
-
-    public function updateNote(Request $request, $id)
-    {
-        // Nouveau flux : mettre à jour la note globale d'un jury
-        $evaluation = Evaluation::findOrFail($id);
-
-        // Vérifier que le jury connecté en est l'auteur
-        if ($evaluation->jury_user_id !== $request->user()->id) {
-            abort(403, 'Cette évaluation ne vous appartient pas.');
-        }
-
-        $data = $request->validate([
-            'note_generale' => ['required', 'numeric', 'min:0', 'max:20'],
-            'commentaire' => ['nullable', 'string'],
+        $evaluation = Evaluation::firstOrNew([
+            'soutenance_id' => $data['soutenance_id'],
+            'jury_user_id' => $request->user()->id,
         ]);
 
-        $evaluation->note_generale = $data['note_generale'];
-        $evaluation->commentaire = $data['commentaire'];
+        $evaluation->note_finale = $data['note_generale'];
+        $evaluation->remarques = $data['commentaire'] ?? null;
+        $evaluation->status = 'brouillon';
         $evaluation->save();
 
         return response()->json([
             'id' => $evaluation->id,
-            'note_generale' => $evaluation->note_generale,
-            'commentaire' => $evaluation->commentaire,
+            'soutenance_id' => $evaluation->soutenance_id,
+            'note_generale' => $evaluation->note_finale,
+            'commentaire' => $evaluation->remarques,
             'status' => $evaluation->status,
         ]);
     }
 
+    /**
+     * Afficher une evaluation.
+     */
+    public function show(Request $request, $id)
+    {
+        $evaluation = Evaluation::with([
+            'soutenance.depot.etudiant',
+            'soutenance.room',
+        ])->findOrFail($id);
+
+        abort_unless(
+            (int) $evaluation->jury_user_id === (int) $request->user()->id,
+            403,
+            'Cette evaluation ne vous appartient pas.'
+        );
+
+        $soutenance = $evaluation->soutenance;
+        $depot = $soutenance?->depot;
+
+        return response()->json([
+            'id' => $evaluation->id,
+            'soutenance_id' => $evaluation->soutenance_id,
+            'student_name' => $depot?->etudiant?->name
+                ?? 'Etudiant inconnu',
+            'theme' => $depot?->title ?? 'Theme inconnu',
+            'date' => $soutenance?->date
+                ? $soutenance->date->format('d/m/Y')
+                : 'Date non disponible',
+            'heure' => $soutenance?->date
+                ? $soutenance->date->format('H:i')
+                : 'Heure non disponible',
+            'salle' => $soutenance?->room?->name
+                ?? 'Salle non disponible',
+            'note_generale' => $evaluation->note_finale,
+            'commentary' => $evaluation->remarques ?? '',
+            'status' => $evaluation->status,
+        ]);
+    }
+
+    /**
+     * Modifier la note et les remarques.
+     */
+    public function updateNote(Request $request, $id)
+    {
+        $evaluation = Evaluation::findOrFail($id);
+
+        abort_unless(
+            (int) $evaluation->jury_user_id === (int) $request->user()->id,
+            403,
+            'Cette evaluation ne vous appartient pas.'
+        );
+
+        $data = $request->validate([
+            'note_generale' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:20',
+            ],
+            'commentaire' => ['nullable', 'string'],
+        ]);
+
+        $evaluation->note_finale = $data['note_generale'];
+        $evaluation->remarques = $data['commentaire'] ?? null;
+        $evaluation->save();
+
+        return response()->json([
+            'id' => $evaluation->id,
+            'note_generale' => $evaluation->note_finale,
+            'commentaire' => $evaluation->remarques,
+            'status' => $evaluation->status,
+        ]);
+    }
+
+    /**
+     * Valider une evaluation.
+     */
     public function validateDeliberation(Request $request, $id)
     {
-        // Délibération : personne autorisée à valider le résultat
-        // Vérification formelle du rôle admin_scolarite ou president_jury
-        abort_unless(in_array($request->user()->role, ['admin_scolarite', 'president_jury'], true), 403, 'Seule l administration peut valider la délibération.');
+        $this->requirePresidentOrAdmin($request);
 
         $evaluation = Evaluation::findOrFail($id);
 
         $data = $request->validate([
-            'decision' => ['required', 'string'],
-            'mention' => ['nullable', 'string'],
             'commentaire_deliberation' => ['nullable', 'string'],
         ]);
 
-        $evaluation->status = 'validated';
-        $evaluation->decision = $data['decision'];
-        $evaluation->mention = $data['mention'] ?? null;
-        $evaluation->commentaire_deliberation = $data['commentaire_deliberation'];
-        $evaluation->validated_at = now();
+        if (!empty($data['commentaire_deliberation'])) {
+            $evaluation->remarques = $data['commentaire_deliberation'];
+        }
+
+        $evaluation->status = 'valide';
         $evaluation->save();
 
         return response()->json([
             'id' => $evaluation->id,
             'status' => $evaluation->status,
-            'decision' => $evaluation->decision,
-            'mention' => $evaluation->mention,
-            'commentaire_deliberation' => $evaluation->commentaire_deliberation,
-            'validated_at' => $evaluation->validated_at,
+            'commentaire' => $evaluation->remarques,
         ]);
     }
 
     private function requireJury(Request $request): void
     {
-        abort_unless(in_array($request->user()->role, ['jury', 'admin'], true), 403, 'Action réservée à un membre du jury.');
+        $user = $request->user();
+
+        $allowedRoles = [
+            'enseignant',
+            'president_jury',
+            'rapporteur',
+            'examinateur',
+        ];
+
+        $allowed = in_array($user->role, $allowedRoles, true)
+            || $user->hasAnyRole($allowedRoles);
+
+        abort_unless(
+            $allowed,
+            403,
+            'Action reservee aux membres du jury.'
+        );
+    }
+
+    private function requirePresidentOrAdmin(Request $request): void
+    {
+        $user = $request->user();
+
+        $allowedRoles = [
+            'admin_scolarite',
+            'president_jury',
+        ];
+
+        $allowed = in_array($user->role, $allowedRoles, true)
+            || $user->hasAnyRole($allowedRoles);
+
+        abort_unless(
+            $allowed,
+            403,
+            'Action reservee au president du jury ou a l administration.'
+        );
     }
 }

@@ -2,9 +2,9 @@ import axios, {
   type AxiosError,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 
-const API_ROOT = 'https://thirty-loops-reply.loca.lt/api/v1';
+const API_ROOT = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://127.0.0.1:8000';
 const STUDENT_TOKEN_KEY = 'emit_student_sanctum_token';
 
 type UnauthorizedHandler = () => void | Promise<void>;
@@ -25,7 +25,7 @@ function createApiClient(baseURL: string) {
   client.interceptors.request.use(async (
     config: InternalAxiosRequestConfig,
   ) => {
-    const token = await SecureStore.getItemAsync(STUDENT_TOKEN_KEY);
+    const token = await storage.getItemAsync(STUDENT_TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
@@ -62,7 +62,7 @@ export const api = createApiClient(API_ROOT);
 export const studentAuthApi = createApiClient(`${API_ROOT}/student`);
 
 export async function setStudentAuthToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(STUDENT_TOKEN_KEY, token);
+  await storage.setItemAsync(STUDENT_TOKEN_KEY, token);
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
   studentAuthApi.defaults.headers.common.Authorization = `Bearer ${token}`;
 }
@@ -70,7 +70,7 @@ export async function setStudentAuthToken(token: string): Promise<void> {
 export async function clearStudentAuthToken(): Promise<void> {
   delete api.defaults.headers.common.Authorization;
   delete studentAuthApi.defaults.headers.common.Authorization;
-  await SecureStore.deleteItemAsync(STUDENT_TOKEN_KEY);
+  await storage.removeItemAsync(STUDENT_TOKEN_KEY);
 }
 
 export function setUnauthorizedHandler(

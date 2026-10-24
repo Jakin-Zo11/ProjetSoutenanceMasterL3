@@ -1,27 +1,24 @@
-import React, { useState } from 'react';
-import {
-  Colors } from '../../constants/theme';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   Image,
   StatusBar,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/theme';
+import evaluationApi, { loginJury } from '../../services/evaluationApi';
+import { storage } from '../../utils/storage';
+
 interface JuryLoginScreenProps {
   onSuccess: (teacherName: string) => void;
   onBack: () => void;
 }
-
-const demoTeacherAccounts: Record<string, string> = {
-  'randriamanana@emit.mg': 'Dr. Randriamanana',
-  'sophie.rajaonarivelo@emit.mg': 'Prof. Sophie Rajaonarivelo',
-  'jp.rakotomamonjy@emit.mg': 'Prof. Jean-Pierre Rakotomamonjy',
-};
 
 const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) => {
   const [email, setEmail] = useState('');
@@ -29,31 +26,96 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [restoring, setRestoring] = useState(true);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const existingToken = await storage.getItemAsync('emit_jury_sanctum_token');
+        const savedName = await storage.getItemAsync('emit_jury_teacher_name');
+
+        if (existingToken && savedName) {
+          // Session locale trouvée — pas d'endpoint /me disponible côté API
+          onSuccess(savedName);
+          return;
+        }
+
+        if (existingToken && !savedName) {
+          // Token sans nom : on garde le token, l'utilisateur se reconnecte pour le nom
+          await storage.removeItemAsync('emit_jury_sanctum_token');
+        }
+      } catch (e) {
+        console.error('Impossible de restaurer la session:', e);
+      } finally {
+        setRestoring(false);
+      }
+    };
+
+    void restoreSession();
+  }, [onSuccess]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
       setErrorMessage('Veuillez renseigner votre email et votre mot de passe.');
       return;
     }
+
     const normalizedEmail = email.trim().toLowerCase();
-    const teacherName = demoTeacherAccounts[normalizedEmail]
-      ?? `Prof. ${normalizedEmail.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())}`;
     setIsLoading(true);
     setErrorMessage('');
-    setTimeout(() => {
+
+    try {
+      const session = await loginJury(normalizedEmail, password);
+
+            if (!session?.success || !session.token) {
+        setErrorMessage(
+          session?.message || 'Identifiants incorrects ou réponse serveur invalide.'
+        );
+        return;
+      }
+
+      const teacherName =
+        session.user?.name?.trim() ||
+        normalizedEmail.split('@')[0] ||
+        'Évaluateur';
+
+      await storage.setItemAsync('emit_jury_sanctum_token', session.token);
+      await storage.setItemAsync('emit_jury_teacher_name', teacherName);
+
       onSuccess(teacherName);
+    } catch (error: unknown) {
+      console.error('Erreur de connexion:', error);
+      const message =
+        error instanceof Error ? error.message : 'Une erreur inattendue est survenue.';
+      setErrorMessage(message);
+    } finally {
       setIsLoading(false);
-    }, 200);
+    }
   };
+
+  if (restoring) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.restoringText}>Vérification de la session…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.light.navy} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.light?.navy ?? '#0A192F'} />
       <View style={styles.content}>
-        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]} accessibilityLabel="Retour">
-          <Ionicons name="arrow-back" size={24} color={Colors.light.white} />
+        <Pressable
+          onPress={onBack}
+          style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]}
+          accessibilityLabel="Retour"
+        >
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
-        {/* Logo EMIT */}
+
         <View style={styles.logoContainer}>
           <Image
             source={require('../../assets/images/Logo-emit.png')}
@@ -62,22 +124,19 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
           />
         </View>
 
-        {/* Jury Badge */}
         <View style={styles.juryBadge}>
           <View style={styles.juryBadgeContent}>
-            <Ionicons name="school-outline" size={18} color={Colors.light.white} />
+            <Ionicons name="school-outline" size={18} color="#FFFFFF" />
             <Text style={styles.juryBadgeText}>Portail Évaluateur</Text>
           </View>
         </View>
 
-        {/* Form */}
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Connexion Évaluateur</Text>
           <Text style={styles.demoHint}>
-            Comptes de démonstration : randriamanana@emit.mg, sophie.rajaonarivelo@emit.mg ou jp.rakotomamonjy@emit.mg
+            Comptes de test : scolarite@emit.mg / password123
           </Text>
 
-          {/* Email */}
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email universitaire</Text>
             <TextInput
@@ -85,13 +144,13 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
               value={email}
               onChangeText={setEmail}
               placeholder="nom@emit.mg"
-              placeholderTextColor={Colors.light.placeholder}
+              placeholderTextColor="#94A3B8"
               autoCapitalize="none"
               keyboardType="email-address"
+              autoCorrect={false}
             />
           </View>
 
-          {/* Mot de passe */}
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Mot de passe</Text>
             <View style={styles.passwordContainer}>
@@ -99,23 +158,41 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
                 style={styles.passwordInput}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-                placeholderTextColor={Colors.light.placeholder}
+                placeholder="••••••••"
+                placeholderTextColor="#94A3B8"
                 secureTextEntry={!showPassword}
               />
-              <Pressable onPress={() => setShowPassword(!showPassword)} style={({ pressed }) => [styles.eyeButton, pressed && { opacity: 0.8 }]}>
-                <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.light.muted} />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                style={({ pressed }) => [styles.eyeButton, pressed && { opacity: 0.8 }]}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color="#64748B"
+                />
               </Pressable>
             </View>
           </View>
 
-          {/* Bouton connexion */}
           {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
-          <Pressable onPress={handleLogin} disabled={isLoading} style={({ pressed }) => [styles.loginButton, isLoading && styles.loginButtonDisabled, pressed && { opacity: 0.8 }]}>
-            <Text style={styles.loginButtonText}>{isLoading ? 'Connexion...' : 'Se connecter'}</Text>
+
+          <Pressable
+            onPress={handleLogin}
+            disabled={isLoading}
+            style={({ pressed }) => [
+              styles.loginButton,
+              isLoading && styles.loginButtonDisabled,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Se connecter</Text>
+            )}
           </Pressable>
 
-          {/* Mot de passe oublié */}
           <Pressable style={({ pressed }) => [styles.forgotPassword, pressed && { opacity: 0.8 }]}>
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
           </Pressable>
@@ -128,7 +205,17 @@ const JuryLoginScreen: React.FC<JuryLoginScreenProps> = ({ onSuccess, onBack }) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.navy,
+    backgroundColor: Colors.light?.navy ?? '#0A192F',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  restoringText: {
+    color: '#FFFFFF',
+    marginTop: 12,
+    fontSize: 14,
   },
   content: {
     flex: 1,
@@ -140,10 +227,7 @@ const styles = StyleSheet.create({
     padding: 8,
     position: 'absolute',
     top: 16,
-  },
-  backIcon: {
-    color: Colors.light.white,
-    fontSize: 28,
+    zIndex: 10,
   },
   logoContainer: {
     alignItems: 'center',
@@ -154,7 +238,7 @@ const styles = StyleSheet.create({
     height: 120,
   },
   juryBadge: {
-    backgroundColor: Colors.light.sky,
+    backgroundColor: Colors.light?.sky ?? '#3B82F6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
@@ -164,8 +248,7 @@ const styles = StyleSheet.create({
   juryBadgeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.light.white,
-    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
   },
   juryBadgeContent: {
     alignItems: 'center',
@@ -173,23 +256,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   formContainer: {
-    backgroundColor: Colors.light.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
-    boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
     elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   formTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: Colors.light.navy,
+    color: Colors.light?.navy ?? '#0A192F',
     textAlign: 'center',
     marginBottom: 12,
-    fontFamily: 'PlusJakartaSans-Bold',
   },
   demoHint: {
-    color: Colors.light.primary,
-    fontFamily: 'Inter-Regular',
+    color: Colors.light?.primary ?? '#3B82F6',
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 20,
@@ -201,23 +285,21 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.light.navy,
+    color: Colors.light?.navy ?? '#0A192F',
     marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
   },
   input: {
-    backgroundColor: Colors.light.surface,
+    backgroundColor: Colors.light?.surface ?? '#F1F5F9',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: Colors.light.navy,
-    fontFamily: 'Inter-Regular',
+    color: Colors.light?.navy ?? '#0A192F',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.light.surface,
+    backgroundColor: Colors.light?.surface ?? '#F1F5F9',
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -225,35 +307,28 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: Colors.light.navy,
-    fontFamily: 'Inter-Regular',
+    color: Colors.light?.navy ?? '#0A192F',
   },
   eyeButton: {
     padding: 8,
   },
-  eyeIcon: {
-    fontSize: 20,
-  },
   loginButton: {
-    backgroundColor: Colors.light.primary,
+    backgroundColor: Colors.light?.primary ?? '#3B82F6',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
-    boxShadow: '0px 2px 8px rgba(26,75,168,0.3)',
-    elevation: 4,
   },
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.light.white,
-    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
   },
   loginButtonDisabled: {
     opacity: 0.6,
   },
   errorMessage: {
-    color: Colors.light.primary,
+    color: '#DC2626',
     fontSize: 13,
     marginBottom: 10,
     textAlign: 'center',
@@ -264,8 +339,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: Colors.light.sky,
-    fontFamily: 'Inter-Regular',
+    color: Colors.light?.sky ?? '#3B82F6',
   },
 });
 

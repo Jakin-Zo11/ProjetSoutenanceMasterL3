@@ -1,25 +1,26 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  RefreshControl,
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
   Image,
   StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
   Pressable,
   Modal,
   Alert,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import TopBar from '../common/TopBar';
-import BottomNav from '../common/BottomNav';
-import { Colors, Fonts } from '../../constants/theme';
-import { juryTabItems, juryTabBadges } from './juryNavigation';
-import type { SoutenanceJury, SoutenanceStatut, StatsJury } from '../../types/jury';
+import { Colors } from '../../constants/theme';
+import evaluationApi from '../../services/evaluationApi';
+import { storage } from '../../utils/storage';
+import type { SoutenanceJury, SoutenanceStatut } from '../../types/jury';
 import { demoDefenses } from '../../types/defenseWorkflow';
+import { juryTabItems, juryTabBadges } from './juryNavigation';
 
 interface JuryHomeScreenProps {
   onNavigate: (screen: string, params?: SoutenanceJury) => void;
@@ -29,201 +30,152 @@ interface JuryHomeScreenProps {
   adminAlerts: string[];
   onAbsenceReported: (defense: SoutenanceJury) => void;
 }
-// Données locales (Mock Data) — aucune requête réseau.
-const statusStyles: Record<SoutenanceStatut, {
-  label: string;
-  backgroundColor: string;
-  color: string;
-  icon?: React.ComponentProps<typeof Ionicons>['name'];
-}> = {
-  en_cours: { label: 'En cours', backgroundColor: Colors.light.sky, color: Colors.light.background },
-  evaluation_en_attente: { label: 'Évaluation en attente', backgroundColor: '#EFF6FF', color: '#2D84E0' },
-  a_venir: { label: 'À venir', backgroundColor: Colors.light.surface, color: Colors.light.icon },
-  evaluation_terminee: { label: 'Évaluation terminée', backgroundColor: Colors.light.primary, color: Colors.light.background, icon: 'checkmark-outline' },
-  absence_signalee: { label: 'Absence signalée', backgroundColor: '#EFF6FF', color: Colors.light.primary },
+
+interface ApiEvaluation {
+  id: number;
+  soutenance_id: number;
+  student_name: string;
+  theme: string;
+  date: string;
+  heure: string;
+  salle: string;
+  status: string;
+  note_generale: number | null;
+  commentary: string | null;
+}
+
+interface DefenseCardInfo {
+  id: string;
+  student_name: string;
+  theme: string;
+  date: string;
+  heure: string;
+  salle: string;
+  statut: SoutenanceStatut;
+  note_generale: number;
+  commentaire: string | null;
+  isEditable: boolean;
+  isValidNote: boolean;
+  studentMatricule?: string;
+}
+
+const apiStatusToUI: Record<string, SoutenanceStatut> = {
+  draft: 'evaluation_en_attente',
+  validated: 'evaluation_terminee',
+  locked: 'evaluation_terminee',
 };
 
-type DefenseFilter = 'all' | 'today' | 'upcoming' | 'pending' | 'completed';
-
-const StatCard = ({
-  icon,
-  label,
-  value,
-  onPress,
-  active,
-  urgent,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  value: number;
-  onPress: () => void;
-  active: boolean;
-  urgent?: boolean;
-}) => (
-  <Pressable
-    onPress={onPress}
-    style={({ pressed }) => [styles.statCard, active && styles.statCardActive, urgent && styles.statCardUrgent, pressed && { opacity: 0.8 }]}
-  >
-    <View style={[styles.statIcon, urgent && styles.statIconUrgent]}>
-      <Ionicons name={icon} size={20} color={urgent ? '#3B82F6' : Colors.light.tint} />
-    </View>
-    <Text style={[styles.statValue, urgent && styles.statValueUrgent]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </Pressable>
-);
-
-const DefenseCard = ({ defense, onPress, onEvaluate, onAbsent, onBusy }: { defense: SoutenanceJury; onPress: () => void; onEvaluate: () => void; onAbsent: () => void; onBusy: () => void }) => {
-  const status = statusStyles[defense.statut];
-
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.defenseCard, pressed && { opacity: 0.8 }]}>
-      <View style={styles.defenseHeader}>
-        <View style={styles.defenseStudent}>
-          <Text style={styles.fieldLabel}>Nom de l&apos;étudiant</Text>
-          <Text style={styles.studentName}>{defense.etudiantNom}</Text>
-          <View style={styles.studentMeta}>
-            <Text style={styles.studentLevel}>{defense.niveau || 'Master 2'}</Text>
-            <Text style={styles.studentRole}>{defense.role || 'Président'}</Text>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: status.backgroundColor }]}>
-          {status.icon && <Ionicons name={status.icon} size={13} color={status.color} />}
-          <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-        </View>
-      </View>
-      <Text style={styles.fieldLabel}>Thème du mémoire</Text>
-      <Text style={styles.thesisTitle}>{defense.theme}</Text>
-      <View style={styles.logistics}>
-        <View><Text style={styles.fieldLabel}>Date</Text><Text style={styles.logisticsValue}>{defense.date}</Text></View>
-        <View><Text style={styles.fieldLabel}>Heure</Text><Text style={styles.logisticsValue}>{defense.heure}</Text></View>
-        <View><Text style={styles.fieldLabel}>Salle</Text><Text style={styles.logisticsValue}>{defense.salle}</Text></View>
-      </View>
-      {(defense.statut === 'a_venir' || defense.statut === 'evaluation_en_attente') && (
-        <View style={styles.actionButtonsRow}>
-          {defense.statut === 'a_venir' && (
-            <>
-              <Pressable
-                style={({ pressed }) => [styles.secondaryActionButton, pressed && { opacity: 0.8 }]}
-                onPress={(event) => { event.stopPropagation(); onAbsent(); }}
-              >
-                <Ionicons name="person-remove-outline" size={16} color={Colors.light.tint} />
-                <Text style={styles.secondaryActionButtonText}>Absent</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.secondaryActionButton, pressed && { opacity: 0.8 }]}
-                onPress={(event) => { event.stopPropagation(); onBusy(); }}
-              >
-                <Ionicons name="time-outline" size={16} color={Colors.light.tint} />
-                <Text style={styles.secondaryActionButtonText}>Occupé / Reporter</Text>
-              </Pressable>
-            </>
-          )}
-          <Pressable
-            style={({ pressed }) => [styles.evaluateButton, pressed && { opacity: 0.8 }]}
-            onPress={(event) => { event.stopPropagation(); onEvaluate(); }}
-          >
-            <Ionicons name="play-circle-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.evaluateButtonText}>Évaluer</Text>
-          </Pressable>
-        </View>
-      )}
-    </Pressable>
-  );
-};
-
-const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, teacherName, evaluatedMatricules, adminAlerts, onAbsenceReported }) => {
-  const [filter, setFilter] = useState<DefenseFilter>('all');
+const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({
+  onNavigate,
+  onExit,
+  teacherName,
+  evaluatedMatricules,
+  adminAlerts,
+  onAbsenceReported,
+}) => {
+  const [filter, setFilter] = useState<'all' | 'today' | 'upcoming' | 'pending' | 'completed'>('all');
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [reportedAbsences, setReportedAbsences] = useState<string[]>([]);
-  const defenses = useMemo<SoutenanceJury[]>(() => demoDefenses
-    .filter((defense) => defense.jury.some((member) => member.name === teacherName))
-    .map((defense) => ({
-      id: defense.id,
-      studentMatricule: defense.studentMatricule,
-      etudiantNom: defense.studentName,
-      theme: defense.theme,
-      date: defense.calendarDate,
-      calendarDate: defense.calendarDate,
-      heure: defense.time,
-      salle: defense.room,
-      statut: reportedAbsences.includes(defense.id)
-        ? 'absence_signalee'
-        : evaluatedMatricules.includes(defense.studentMatricule)
-          ? 'evaluation_terminee'
-          : defense.status,
-      niveau: 'Master 2',
-      role: defense.jury.find((member) => member.name === teacherName)?.role,
-      director: defense.director,
-      jury: defense.jury,
-    })), [teacherName, evaluatedMatricules, reportedAbsences]);
+  const [defenses, setDefenses] = useState<DefenseCardInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const notifications = [
-    ...reportedAbsences.map((id) => {
-      const defense = defenses.find((item) => item.id === id);
+  const mapDemoToCards = useCallback((): DefenseCardInfo[] => {
+    return demoDefenses
+      .filter((defense) => defense.jury.some((member) => member.name === teacherName))
+      .map((defense): DefenseCardInfo => ({
+        id: defense.id,
+        student_name: defense.studentName,
+        theme: defense.theme,
+        date: defense.calendarDate ?? defense.date,
+        heure: defense.time,
+        salle: defense.room,
+        statut: reportedAbsences.includes(defense.id)
+          ? 'absence_signalee'
+          : evaluatedMatricules.includes(defense.studentMatricule)
+            ? 'evaluation_terminee'
+            : ('a_venir' as SoutenanceStatut),
+        note_generale: 0,
+        commentaire: null,
+        isEditable: false,
+        isValidNote: false,
+        studentMatricule: defense.studentMatricule,
+      }));
+  }, [teacherName, evaluatedMatricules, reportedAbsences]);
+
+  const mapApiToCards = (assigned: ApiEvaluation[]): DefenseCardInfo[] =>
+    assigned.map((evaluation) => {
+      const isEditable = evaluation.status !== 'validated' && evaluation.status !== 'locked';
+      const isValidNote = evaluation.note_generale !== null && evaluation.note_generale >= 0;
       return {
-        id: `absence-${id}`,
-        title: 'Absence signalée · démonstration locale',
-        message: defense
-          ? `${defense.etudiantNom} · ${defense.date} à ${defense.heure}. Le créneau reste inchangé.`
-          : 'Votre absence a été signalée.',
-        time: 'À l’instant',
+        id: String(evaluation.soutenance_id),
+        student_name: evaluation.student_name,
+        theme: evaluation.theme,
+        date: evaluation.date,
+        heure: evaluation.heure,
+        salle: evaluation.salle,
+        statut: apiStatusToUI[evaluation.status] ?? 'evaluation_en_attente',
+        note_generale: evaluation.note_generale ?? 0,
+        commentaire: evaluation.commentary ?? null,
+        isEditable,
+        isValidNote,
       };
-    }),
-    ...adminAlerts.map((message, index) => ({
-      id: `admin-alert-${index}`,
-      title: 'Signalement transmis localement',
-      message,
-      time: 'À l’instant',
-    })),
-    ...defenses.slice(0, 2).map((defense) => ({
-      id: `defense-${defense.id}`,
-      title: 'Soutenance assignée',
-      message: `${defense.etudiantNom} · ${defense.date} à ${defense.heure}`,
-      time: 'À venir',
-    })),
-    { id: 3, title: 'Rappel de calendrier', message: 'Soutenances du 11 au 16 novembre 2026', time: 'Hier' },
-  ];
+    });
 
-  // Statistiques locales (Mock Data) : valeurs dérivées de la liste,
-  // backlog d'évaluations en attente = 3 (chiffre prioritaire du jury).
-  const stats: StatsJury = {
-    soutenancesAujourdhui: defenses.filter((item) => item.date === '11 Nov 2026').length,
-    soutenancesAVenir: defenses.filter((item) => item.statut === 'a_venir').length,
-    evaluationsEnAttente: defenses.filter((item) => item.statut === 'evaluation_en_attente').length,
-    evaluationsTerminees: defenses.filter((item) => item.statut === 'evaluation_terminee').length,
+  const loadDefenses = useCallback(async () => {
+    setError(null);
+    try {
+      const token = await storage.getItemAsync('emit_jury_sanctum_token');
+      if (!token) {
+        setDefenses(mapDemoToCards());
+        return;
+      }
+      const assigned = await evaluationApi.listAssignedEvaluations(token);
+      setDefenses(mapApiToCards(assigned as ApiEvaluation[]));
+    } catch (err) {
+      console.error('Erreur chargement évaluations:', err);
+      setError(err instanceof Error ? err.message : 'Impossible de charger les soutenances');
+      setDefenses(mapDemoToCards());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+ }, [mapDemoToCards]);
+
+  useEffect(() => {
+    void loadDefenses();
+  }, [loadDefenses]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    void loadDefenses();
   };
 
-  const filteredDefenses = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    return defenses.filter((defense) => {
-      const matchesSearch = !normalizedSearch
-        || defense.etudiantNom.toLowerCase().includes(normalizedSearch)
-        || defense.salle.toLowerCase().includes(normalizedSearch);
-      const matchesFilter =
-        filter === 'all'
-        || (filter === 'today' && defense.date === '11 Nov 2026')
-        || (filter === 'upcoming' && defense.statut === 'a_venir')
-        || (filter === 'pending' && defense.statut === 'evaluation_en_attente')
-        || (filter === 'completed' && defense.statut === 'evaluation_terminee');
-      const matchesDate = !selectedDate || defense.date === selectedDate;
-      return matchesSearch && matchesFilter && matchesDate;
-    });
-  }, [filter, search, selectedDate, defenses]);
-
-  const refresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 700);
+  const handleSaveNote = async (defenseId: string, note: number, commentaire: string) => {
+    try {
+      const token = await storage.getItemAsync('emit_jury_sanctum_token');
+      if (!token) {
+        Alert.alert('Non connecté', 'Connectez-vous pour enregistrer une note.');
+        return;
+      }
+      await evaluationApi.saveJuryNote(token, parseInt(defenseId, 10), note, commentaire);
+      Alert.alert('Succès', 'Note enregistrée.');
+      await loadDefenses();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de l’enregistrement';
+      Alert.alert('Erreur', message);
+    }
   };
 
   const handleTabChange = (tab: string) => {
-    if (tab === 'defenses') {
+    if (tab === 'defenses' || tab === 'students') {
       onNavigate('jury-students');
     } else if (tab === 'team') {
       onNavigate('jury-team');
-    } else if (tab === 'evaluations') {
+    } else if (tab === 'evaluations' || tab === 'history') {
       onNavigate('jury-history');
     } else if (tab === 'profile') {
       onNavigate('jury-profile');
@@ -232,39 +184,111 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, tea
     }
   };
 
+  const filteredDefenses = useMemo(() => {
+    let list = defenses;
+    if (filter === 'today') {
+      list = list.filter((d) => d.date.toLowerCase().includes('11 nov') || d.date.includes(new Date().getDate().toString()));
+    } else if (filter === 'upcoming') {
+      list = list.filter((d) => d.statut === 'a_venir');
+    } else if (filter === 'pending') {
+      list = list.filter((d) => d.statut === 'evaluation_en_attente');
+    } else if (filter === 'completed') {
+      list = list.filter((d) => d.statut === 'evaluation_terminee');
+    }
+    if (selectedDate) {
+      list = list.filter((d) => d.date.includes(selectedDate.replace(' 2026', '')) || d.date === selectedDate);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (d) =>
+          d.student_name.toLowerCase().includes(q) ||
+          d.salle.toLowerCase().includes(q) ||
+          d.theme.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [defenses, filter, search, selectedDate]);
+
+  const toSoutenanceParams = (defense: DefenseCardInfo): SoutenanceJury =>
+    ({
+      id: defense.id,
+      etudiantNom: defense.student_name,
+      studentMatricule: defense.studentMatricule ?? defense.id,
+      theme: defense.theme,
+      date: defense.date,
+      heure: defense.heure,
+      salle: defense.salle,
+      statut: defense.statut,
+    }) as SoutenanceJury;
+
+  const notifications = [
+    ...adminAlerts.map((msg, i) => ({
+      id: `admin-${i}`,
+      title: 'Scolarité',
+      message: msg,
+      time: 'Récent',
+    })),
+    ...defenses.slice(0, 3).map((d) => ({
+      id: d.id,
+      title: 'Soutenance',
+      message: `${d.student_name} — ${d.date} à ${d.heure}`,
+      time: d.date,
+    })),
+  ];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Chargement des soutenances…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.light.tint} />
-      <TopBar title="EMIT" showBackButton onBackPress={onExit} showNotification onNotificationPress={() => setShowNotifications(true)} />
+      <StatusBar barStyle="light-content" backgroundColor="#0A192F" />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={onExit} style={styles.headerBtn} accessibilityRole="button">
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Espace Jury</Text>
+        <Pressable onPress={() => setShowNotifications(true)} style={styles.headerBtn}>
+          <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
+          {notifications.length > 0 && <View style={styles.badgeDot} />}
+        </Pressable>
+      </View>
 
       {/* Notifications Modal */}
-      <Modal
-        visible={showNotifications}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowNotifications(false)}
-      >
+      <Modal visible={showNotifications} transparent animationType="slide" onRequestClose={() => setShowNotifications(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowNotifications(false)}>
           <Pressable style={styles.notificationModal} onPress={(e) => e.stopPropagation()}>
             <View style={styles.notificationHeader}>
               <Text style={styles.notificationTitle}>Notifications</Text>
               <Pressable onPress={() => setShowNotifications(false)}>
-                <Ionicons name="close" size={24} color={Colors.light.icon} />
+                <Ionicons name="close" size={24} color="#64748B" />
               </Pressable>
             </View>
             <ScrollView style={styles.notificationList}>
-              {notifications.map((notif) => (
-                <View key={notif.id} style={styles.notificationItem}>
-                  <View style={styles.notificationIcon}>
-                    <Ionicons name="notifications-outline" size={20} color={Colors.light.tint} />
+              {notifications.length === 0 ? (
+                <Text style={styles.emptyText}>Aucune notification</Text>
+              ) : (
+                notifications.map((notif) => (
+                  <View key={notif.id} style={styles.notificationItem}>
+                    <Ionicons name="notifications-outline" size={20} color="#3B82F6" />
+                    <View style={styles.notificationContent}>
+                      <Text style={styles.notificationItemTitle}>{notif.title}</Text>
+                      <Text style={styles.notificationItemMessage}>{notif.message}</Text>
+                      <Text style={styles.notificationItemTime}>{notif.time}</Text>
+                    </View>
                   </View>
-                  <View style={styles.notificationContent}>
-                    <Text style={styles.notificationItemTitle}>{notif.title}</Text>
-                    <Text style={styles.notificationItemMessage}>{notif.message}</Text>
-                    <Text style={styles.notificationItemTime}>{notif.time}</Text>
-                  </View>
-                </View>
-              ))}
+                ))
+              )}
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -273,695 +297,379 @@ const JuryHomeScreen: React.FC<JuryHomeScreenProps> = ({ onNavigate, onExit, tea
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.light.tint} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" />}
       >
+        {/* Hero */}
         <View style={styles.juryHero}>
-        <View style={styles.brandRow}>
-          <Image
-            source={require('../../assets/images/Logo-emit.png')}
-            style={styles.brandLogo}
-            resizeMode="contain"
-          />
-          <Text style={styles.brandText}>EMIT – École de Management et d’Innovation Technologique</Text>
-        </View>
-        <View style={styles.profileRow}>
-          <View style={styles.profileAvatar}>
-            <Ionicons name="person-outline" size={24} color={Colors.light.background} />
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.greeting}>Bonjour,</Text>
-            <Text style={styles.profileTitle}>{teacherName}</Text>
-            <View style={styles.departmentBadge}>
+          <View style={styles.profileRow}>
+            <View style={styles.profileAvatar}>
+              <Ionicons name="person" size={28} color="#FFFFFF" />
+            </View>
+             <View style={styles.profileInfo}>
+              <Text style={styles.greeting}>Bonjour,</Text>
+              <Text style={styles.profileTitle}>{teacherName}</Text>
               <Text style={styles.departmentBadgeText}>Département Informatique</Text>
             </View>
           </View>
         </View>
-        <View style={styles.quickActions}>
-          <QuickAction icon="today-outline" label="Aujourd’hui" onPress={() => setFilter('today')} />
-          <QuickAction icon="people-outline" label="Mes étudiants" onPress={() => onNavigate('jury-students')} />
-          <QuickAction icon="school-outline" label="Équipe jury" onPress={() => onNavigate('jury-team')} />
-          <QuickAction icon="person-outline" label="Profil" onPress={() => onNavigate('jury-profile')} />
-        </View>
-        </View>
 
-        <View style={styles.contentSheet}>
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorHint}>Données de démonstration affichées</Text>
+          </View>
+        ) : null}
+
+        {/* Stats */}
         <View style={styles.statsGrid}>
-          <StatCard icon="calendar-outline" label="Soutenances aujourd'hui" value={stats.soutenancesAujourdhui} active={filter === 'today'} onPress={() => setFilter('today')} />
-          <StatCard icon="calendar-clear-outline" label="Soutenances à venir" value={stats.soutenancesAVenir} active={filter === 'upcoming'} onPress={() => setFilter('upcoming')} />
-          <StatCard icon="clipboard-outline" label="Évaluations en attente" value={stats.evaluationsEnAttente} active={filter === 'pending'} urgent onPress={() => setFilter('pending')} />
-          <StatCard icon="checkmark-circle-outline" label="Évaluations terminées" value={stats.evaluationsTerminees} active={filter === 'completed'} onPress={() => setFilter('completed')} />
+          <StatCard
+            label="Aujourd'hui"
+            value={defenses.filter((d) => d.date.toLowerCase().includes('11 nov')).length}
+            active={filter === 'today'}
+            onPress={() => setFilter('today')}
+          />
+          <StatCard
+            label="À venir"
+            value={defenses.filter((d) => d.statut === 'a_venir').length}
+            active={filter === 'upcoming'}
+            onPress={() => setFilter('upcoming')}
+          />
+          <StatCard
+            label="En attente"
+            value={defenses.filter((d) => d.statut === 'evaluation_en_attente').length}
+            active={filter === 'pending'}
+            onPress={() => setFilter('pending')}
+          />
+          <StatCard
+            label="Terminées"
+            value={defenses.filter((d) => d.statut === 'evaluation_terminee').length}
+            active={filter === 'completed'}
+            onPress={() => setFilter('completed')}
+          />
         </View>
 
-        {/* Calendrier des évaluations */}
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
-            <Text style={styles.calendarTitle}>Calendrier des évaluations</Text>
-            <Text style={styles.calendarSubtitle}>Novembre 2026</Text>
-          </View>
-          <View style={styles.calendarGrid}>
-            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => (
-              <View key={index} style={styles.calendarDayHeader}>
-                <Text style={styles.calendarDayHeaderText}>{day}</Text>
-              </View>
-            ))}
-            {[...Array(42)].map((_, index) => {
-              const dayNumber = index - 5;
-              const hasDefense = defenses.some(d => d.date.includes(`${dayNumber} Nov`));
-              const isToday = dayNumber === 11;
-              const isPast = dayNumber < 11;
-              const isInRange = dayNumber >= 1 && dayNumber <= 30;
-              const isSelected = selectedDate === `${dayNumber} Nov 2026`;
-
-              if (!isInRange) {
-                return <View key={index} style={styles.calendarDayEmpty} />;
-              }
-
-              return (
-                <Pressable
-                  key={index}
-                  onPress={() => {
-                    const newDate = `${dayNumber} Nov 2026`;
-                    setSelectedDate(selectedDate === newDate ? null : newDate);
-                  }}
-                  style={[
-                    styles.calendarDay,
-                    isToday && styles.calendarDayToday,
-                    hasDefense && styles.calendarDayHasDefense,
-                    isSelected && styles.calendarDaySelected
-                  ]}
-                >
-                  <Text style={[
-                    styles.calendarDayText,
-                    isToday && styles.calendarDayTextToday,
-                    isPast && styles.calendarDayTextPast,
-                    isSelected && styles.calendarDayTextSelected
-                  ]}>{dayNumber}</Text>
-                  {hasDefense && <View style={[styles.calendarDot, isSelected && styles.calendarDotSelected]} />}
-                </Pressable>
-              );
-            })}
-          </View>
-          {selectedDate && (
-            <Pressable style={styles.clearDateButton} onPress={() => setSelectedDate(null)}>
-              <Text style={styles.clearDateButtonText}>Effacer le filtre: {selectedDate}</Text>
-            </Pressable>
-          )}
-        </View>
-
+        {/* Search */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={Colors.light.icon} />
+          <Ionicons name="search-outline" size={20} color="#64748B" />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Rechercher un étudiant, une salle..."
-            placeholderTextColor={Colors.light.icon}
+            placeholder="Rechercher un étudiant, une salle…"
+            placeholderTextColor="#94A3B8"
             style={styles.searchInput}
           />
-          {(filter !== 'all' || Boolean(search)) && (
-            <Pressable onPress={() => { setFilter('all'); setSearch(''); }} style={({ pressed }) => pressed && { opacity: 0.8 }}>
-              <Ionicons name="close-circle-outline" size={20} color={Colors.light.icon} />
+          {(filter !== 'all' || search.length > 0) && (
+            <Pressable onPress={() => { setFilter('all'); setSearch(''); setSelectedDate(null); }}>
+              <Ionicons name="close-circle" size={20} color="#64748B" />
             </Pressable>
           )}
         </View>
 
+        {/* Liste */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Mes soutenances</Text>
           <Text style={styles.sectionCount}>{filteredDefenses.length}</Text>
         </View>
 
-        <View style={styles.defensesList}>
-          {filteredDefenses.map((defense) => (
-            <DefenseCard
-              key={defense.id}
-              defense={defense}
-              onPress={() => onNavigate('jury-defense', defense)}
-              onEvaluate={() => onNavigate('jury-evaluation', defense)}
-              onAbsent={() => Alert.alert(
+        {filteredDefenses.map((defense) => (
+          <DefenseCard
+            key={defense.id}
+            defense={defense}
+            onPress={() => onNavigate('jury-defense', toSoutenanceParams(defense))}
+            onEvaluate={() => onNavigate('jury-evaluation', toSoutenanceParams(defense))}
+            onAbsent={() =>
+              Alert.alert(
                 'Signaler une absence',
-                `Confirmer votre absence pour ${defense.etudiantNom} le ${defense.date} à ${defense.heure} ? La date, l’heure et la salle ne seront pas modifiées.`,
+                `Confirmer votre absence pour ${defense.student_name} le ${defense.date} à ${defense.heure} ?`,
                 [
                   { text: 'Annuler', style: 'cancel' },
                   {
                     text: 'Signaler',
                     onPress: () => {
-                      setReportedAbsences((current) => current.includes(defense.id) ? current : [...current, defense.id]);
-                      onAbsenceReported(defense);
-                      Alert.alert('Signalement enregistré localement', 'Aucun message n’est envoyé à la scolarité tant que le service n’est pas connecté. Le créneau reste inchangé.');
+                      setReportedAbsences((cur) => (cur.includes(defense.id) ? cur : [...cur, defense.id]));
+                      onAbsenceReported(toSoutenanceParams(defense));
+                      Alert.alert('Enregistré localement', 'Le créneau n’est pas modifié depuis l’app.');
                     },
                   },
                 ],
-              )}
-              onBusy={() => Alert.alert(
-                'Signaler une indisponibilité',
-                'La scolarité pourra examiner votre signalement. Aucune date, heure ou salle ne sera modifiée depuis cette application.',
-                [
-                  { text: 'Annuler', style: 'cancel' },
-                  { text: 'Confirmer', onPress: () => onAbsenceReported(defense) },
-                ],
-              )}
-            />
-          ))}
-        </View>
+              )
+            }
+          />
+        ))}
+
         {filteredDefenses.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={40} color={Colors.light.icon} />
-            <Text style={styles.emptyText}>Aucune soutenance ne correspond à votre recherche.</Text>
+            <Ionicons name="calendar-outline" size={40} color="#94A3B8" />
+            <Text style={styles.emptyText}>Aucune soutenance trouvée.</Text>
           </View>
         )}
-        </View>
       </ScrollView>
 
-      <BottomNav
-        items={juryTabItems}
-        activeTab="home"
-        badges={juryTabBadges}
-        onTabChange={handleTabChange}
-      />
+      {/* Bottom nav simple */}
+      <View style={styles.bottomNav}>
+        {(juryTabItems ?? [
+          { id: 'home', label: 'Accueil', icon: 'home-outline' },
+          { id: 'students', label: 'Étudiants', icon: 'people-outline' },
+          { id: 'history', label: 'Historique', icon: 'time-outline' },
+          { id: 'profile', label: 'Profil', icon: 'person-outline' },
+        ]).map((item: { id: string; label: string; icon?: string }) => (
+          <Pressable key={item.id} style={styles.bottomNavItem} onPress={() => handleTabChange(item.id)}>
+            <Ionicons
+              name={(item.icon as keyof typeof Ionicons.glyphMap) || 'ellipse-outline'}
+              size={22}
+              color={item.id === 'home' ? '#3B82F6' : '#64748B'}
+            />
+            <Text style={[styles.bottomNavLabel, item.id === 'home' && styles.bottomNavLabelActive]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
     </SafeAreaView>
   );
 };
 
-const QuickAction = ({ icon, label, onPress }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+/* ——— Sous-composants ——— */
+
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-}) => (
-  <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.8 }]}>
-    <View style={styles.quickActionIcon}>
-      <Ionicons name={icon} size={21} color="#FFFFFF" />
-    </View>
-    <Text style={styles.quickActionLabel} numberOfLines={1}>{label}</Text>
-  </Pressable>
-);
+}) {
+  return (
+    <Pressable style={styles.quickAction} onPress={onPress}>
+      <View style={styles.quickActionIcon}>
+        <Ionicons name={icon} size={20} color="#3B82F6" />
+      </View>
+      <Text style={styles.quickActionLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  active,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={[styles.statCard, active && styles.statCardActive]} onPress={onPress}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function DefenseCard({
+  defense,
+  onPress,
+  onEvaluate,
+  onAbsent,
+}: {
+  defense: DefenseCardInfo;
+  onPress: () => void;
+  onEvaluate: () => void;
+  onAbsent: () => void;
+}) {
+  return (
+    <Pressable style={styles.defenseCard} onPress={onPress}>
+      <View style={styles.defenseCardHeader}>
+        <Text style={styles.defenseStudent}>{defense.student_name}</Text>
+        <View style={[styles.statusPill, defense.statut === 'evaluation_terminee' && styles.statusDone]}>
+          <Text style={styles.statusText}>{defense.statut.replace(/_/g, ' ')}</Text>
+        </View>
+      </View>
+      <Text style={styles.defenseTheme} numberOfLines={2}>{defense.theme}</Text>
+      <Text style={styles.defenseMeta}>
+        {defense.date} · {defense.heure} · {defense.salle}
+      </Text>
+      {defense.isValidNote && (
+        <Text style={styles.defenseNote}>Note : {defense.note_generale}/20</Text>
+      )}
+      <View style={styles.defenseActions}>
+        <Pressable style={styles.actionBtn} onPress={onEvaluate}>
+          <Text style={styles.actionBtnText}>Évaluer</Text>
+        </Pressable>
+        <Pressable style={[styles.actionBtn, styles.actionBtnGhost]} onPress={onAbsent}>
+          <Text style={styles.actionBtnGhostText}>Absence</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.navy,
-  },
-  content: {
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  juryHero: {
-    backgroundColor: Colors.light.navy,
-    paddingTop: 12,
-    paddingBottom: 38,
-  },
-  contentSheet: {
-    backgroundColor: '#F8FAFC',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: -24,
-    minHeight: 600,
-    padding: 18,
-    paddingBottom: 28,
-    gap: 16,
-  },
-  quickActions: {
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, color: '#64748B' },
+  header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 4,
+    backgroundColor: '#0A192F',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  quickAction: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 7,
+  headerBtn: { padding: 8 },
+  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  badgeDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
   },
-  quickActionIcon: {
-    alignItems: 'center',
-    backgroundColor: '#3B82F6',
-    borderRadius: 23,
-    elevation: 3,
-    height: 46,
-    justifyContent: 'center',
-    width: 46,
+  content: { paddingBottom: 100 },
+  juryHero: {
+    backgroundColor: '#0A192F',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  quickActionLabel: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  institution: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  brandRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  brandLogo: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 6,
-    height: 40,
-    marginRight: 10,
-    width: 40,
-  },
-  brandText: {
-    color: '#FFFFFF',
-    flex: 1,
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
-  },
-  profileRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  profileInfo: {
-    flex: 1,
-  },
+  profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   profileAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1E3A5F',
     alignItems: 'center',
-    backgroundColor: Colors.light.tint,
-    borderRadius: 24,
-    height: 48,
     justifyContent: 'center',
-    marginRight: 12,
-    width: 48,
   },
-  greeting: {
-    color: '#BFDBFE',
-    fontFamily: Fonts?.sans,
-    fontSize: 14,
-  },
-  profileTitle: {
-    color: '#FFFFFF',
-    fontFamily: Fonts?.sans,
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  departmentBadge: {
-    backgroundColor: '#EAF4FF',
+  profileInfo: { marginLeft: 14 },
+  greeting: { color: '#94A3B8', fontSize: 13 },
+  profileTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  departmentBadgeText: { color: '#64748B', fontSize: 12, marginTop: 2 },
+  quickActions: { flexDirection: 'row', justifyContent: 'space-between' },
+  quickAction: { alignItems: 'center', flex: 1 },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 6,
-    alignSelf: 'flex-start',
+    backgroundColor: '#1E3A5F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
-  departmentBadgeText: {
-    color: '#2D84E0',
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-    fontWeight: '600',
+  quickActionLabel: { color: '#CBD5E1', fontSize: 11, textAlign: 'center' },
+  errorBanner: {
+    margin: 16,
+    padding: 12,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
   },
+  errorText: { color: '#92400E', fontWeight: '600' },
+  errorHint: { color: '#B45309', fontSize: 12, marginTop: 4 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 28,
+    padding: 12,
+    gap: 10,
   },
   statCard: {
-    backgroundColor: Colors.light.background,
-    borderColor: Colors.light.icon,
+    width: '47%',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
     padding: 14,
-    width: '48%',
-  },
-  statCardActive: {
-    borderColor: Colors.light.tint,
-    borderWidth: 2,
-  },
-  statCardUrgent: {
-    borderLeftColor: '#2D84E0',
-    borderLeftWidth: 4,
-  },
-  statIconUrgent: {
-    backgroundColor: '#EAF4FF',
-  },
-  statValueUrgent: {
-    color: '#2D84E0',
-  },
-  searchContainer: {
-    alignItems: 'center',
-    backgroundColor: Colors.light.background,
-    borderColor: Colors.light.icon,
-    borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statCardActive: { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
+  statValue: { fontSize: 22, fontWeight: '800', color: '#0A192F' },
+  statLabel: { fontSize: 12, color: '#64748B', marginTop: 4 },
+  searchContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
-    paddingHorizontal: 12,
-  },
-  searchInput: {
-    color: Colors.light.tint,
-    flex: 1,
-    fontFamily: Fonts?.sans,
-    fontSize: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-  },
-  emptyState: {
     alignItems: 'center',
-    paddingVertical: 36,
-  },
-  emptyText: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 14,
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  statIcon: {
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    borderRadius: 18,
-    height: 36,
-    justifyContent: 'center',
-    marginBottom: 8,
-    width: 36,
-  },
-  statValue: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.mono,
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  statLabel: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
-  },
-  sectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
     marginBottom: 12,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  sectionTitle: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 20,
-    fontWeight: '700',
+  searchInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: '#0A192F' },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
-  sectionCount: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 999,
-    color: Colors.light.background,
-    fontFamily: Fonts?.mono,
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 8,
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0A192F' },
+  sectionCount: { fontSize: 14, color: '#64748B' },
+  defenseCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  defenseCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  defenseStudent: { fontSize: 16, fontWeight: '700', color: '#0A192F', flex: 1 },
+  statusPill: {
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 8,
     paddingVertical: 4,
-  },
-  defensesList: {
-    marginBottom: 16,
-  },
-  defenseCard: {
-    backgroundColor: Colors.light.background,
-    borderColor: Colors.light.icon,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
-    padding: 16,
-  },
-  defenseHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  defenseStudent: {
-    flex: 1,
-    marginRight: 8,
-  },
-  fieldLabel: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  studentName: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  studentMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  studentLevel: {
-    backgroundColor: Colors.light.sky,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    color: Colors.light.background,
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  studentRole: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    color: '#1E3A8A',
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statusBadge: {
-    alignItems: 'center',
-    borderRadius: 20,
-    flexDirection: 'row',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  statusText: {
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  thesisTitle: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  logistics: {
-    borderTopColor: Colors.light.icon,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-  },
-  logisticsValue: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.mono,
-    fontSize: 12,
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 16,
-  },
-  secondaryActionButton: {
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flex: 1,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  secondaryActionButtonText: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  evaluateButton: {
-    alignItems: 'center',
-    backgroundColor: Colors.light.tint,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flex: 1,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  evaluateButtonText: {
-    color: '#FFFFFF',
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  calendarCard: {
-    backgroundColor: Colors.light.background,
-    borderColor: Colors.light.icon,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 24,
-    padding: 16,
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  calendarTitle: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  calendarSubtitle: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  calendarDayHeader: {
-    width: '14.28%',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  calendarDayHeaderText: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  calendarDayEmpty: {
-    width: '14.28%',
-    paddingVertical: 8,
-  },
-  calendarDay: {
-    width: '14.28%',
-    alignItems: 'center',
-    paddingVertical: 8,
     borderRadius: 8,
   },
-  calendarDayToday: {
-    backgroundColor: Colors.light.tint,
-  },
-  calendarDayHasDefense: {
-    backgroundColor: '#EAF4FF',
-  },
-  calendarDaySelected: {
-    backgroundColor: Colors.light.tint,
-  },
-  calendarDayText: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.mono,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  calendarDayTextToday: {
-    color: Colors.light.background,
-  },
-  calendarDayTextPast: {
-    color: Colors.light.icon,
-  },
-  calendarDayTextSelected: {
-    color: Colors.light.background,
-  },
-  calendarDot: {
+  statusDone: { backgroundColor: '#D1FAE5' },
+  statusText: { fontSize: 10, color: '#92400E', textTransform: 'capitalize' },
+  defenseTheme: { color: '#475569', fontSize: 13, marginTop: 6 },
+  defenseMeta: { color: '#94A3B8', fontSize: 12, marginTop: 6 },
+  defenseNote: { color: '#3B82F6', fontWeight: '600', marginTop: 6 },
+  defenseActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actionBtn: {
     backgroundColor: '#3B82F6',
-    borderRadius: 2,
-    height: 4,
-    marginTop: 2,
-    width: 4,
-  },
-  calendarDotSelected: {
-    backgroundColor: Colors.light.background,
-  },
-  clearDateButton: {
-    alignItems: 'center',
-    marginTop: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
+    borderRadius: 8,
   },
-  clearDateButtonText: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-    fontWeight: '600',
+  actionBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
+  actionBtnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#CBD5E1' },
+  actionBtnGhostText: { color: '#64748B', fontWeight: '600', fontSize: 13 },
+  emptyState: { alignItems: 'center', padding: 40 },
+  emptyText: { color: '#94A3B8', marginTop: 8, textAlign: 'center' },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingVertical: 8,
+    paddingBottom: 12,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
+  bottomNavItem: { flex: 1, alignItems: 'center' },
+  bottomNavLabel: { fontSize: 10, color: '#64748B', marginTop: 2 },
+  bottomNavLabelActive: { color: '#3B82F6', fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   notificationModal: {
-    backgroundColor: Colors.light.background,
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    maxHeight: '60%',
     padding: 20,
   },
-  notificationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  notificationTitle: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  notificationList: {
-    flex: 1,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.icon,
-  },
-  notificationIcon: {
-    alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    marginRight: 12,
-    width: 40,
-  },
-  notificationContent: {
-    flex: 1,
-  },
-  notificationItemTitle: {
-    color: Colors.light.tint,
-    fontFamily: Fonts?.sans,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  notificationItemMessage: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  notificationItemTime: {
-    color: Colors.light.icon,
-    fontFamily: Fonts?.sans,
-    fontSize: 11,
-  },
+  notificationHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  notificationTitle: { fontSize: 18, fontWeight: '700' },
+  notificationList: { maxHeight: 300 },
+  notificationItem: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  notificationContent: { marginLeft: 12, flex: 1 },
+  notificationItemTitle: { fontWeight: '600', color: '#0A192F' },
+  notificationItemMessage: { color: '#64748B', fontSize: 13, marginTop: 2 },
+  notificationItemTime: { color: '#94A3B8', fontSize: 11, marginTop: 4 },
 });
 
 export default JuryHomeScreen;

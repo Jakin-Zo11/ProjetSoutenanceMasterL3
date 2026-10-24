@@ -19,12 +19,18 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PvSoutenanceController;
 use App\Http\Controllers\Api\Student\StudentAuthController;
 use App\Http\Controllers\Api\Student\StudentProfileController;
+<<<<<<< HEAD
 use App\Http\Controllers\Api\PlanificationController;
 use App\Http\Controllers\Api\IndisponibiliteController;
 use App\Http\Controllers\Api\AffectationJuryController;
 use App\Http\Controllers\Api\ConvocationController;
 use App\Http\Controllers\Api\ParametrePlanificationController;
 use App\Http\Controllers\Api\PlanningValidationController;
+=======
+use App\Http\Controllers\Api\Student\StudentSimulationController;
+use App\Http\Controllers\Api\Student\StudentPortalController;
+
+>>>>>>> b5fd8647ace4c61a064ed21d9a276327c5b9ec25
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -88,10 +94,22 @@ Route::prefix('v1/student')->group(function () {
     Route::post('/login', [StudentAuthController::class, 'login']);
 
     // Routes protégées — token Sanctum étudiant
-    Route::middleware(['auth:sanctum', 'role:etudiant'])->group(function () {
-        Route::get('/profile', [StudentProfileController::class, 'show']);
-        Route::patch('/profile', [StudentProfileController::class, 'update']);
-    });
+    
+Route::middleware(['auth:sanctum', 'role:etudiant'])->group(function () {
+    Route::get('/profile', [StudentProfileController::class, 'show']);
+    Route::patch('/profile', [StudentProfileController::class, 'update']);
+
+    Route::get('/thesis', [StudentSimulationController::class, 'thesis']);
+    Route::get('/defense', [StudentSimulationController::class, 'defense']);
+    Route::get('/documents', [StudentSimulationController::class, 'documents']);
+
+    Route::get('/status', [StudentPortalController::class, 'status']);
+    Route::get('/theme', [StudentPortalController::class, 'showTheme']);
+    Route::get('/convocation', [StudentPortalController::class, 'convocation']);
+    Route::get('/result', [StudentPortalController::class, 'result']);
+    Route::get('/pv', [StudentPortalController::class, 'pv']);
+});
+
 });
 
 // Authenticated API lists and schedule demonstration data.
