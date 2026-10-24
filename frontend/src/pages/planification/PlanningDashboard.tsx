@@ -5,6 +5,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { getPlanning, planifierSoutenance, Soutenance } from '../../services/api/soutenanceApi';
 import ReplanificationModal from './ReplanificationModal';
+import { Link } from 'react-router-dom';
+import { getStatutValidation, validerPlanning, StatutValidation } from '../../services/api/validationApi';
 
 const STATUT_COLORS: Record<string, string> = {
   en_attente: '#94a3b8',
@@ -44,6 +46,18 @@ const renderEvent = (arg: any) => {
             .join(' · ')}
         </div>
       )}
+      {s.valide_le && (
+        <div className="sc-valide">
+          ✓ Validée ·{' '}
+          <Link
+            to={`/admin/planification/convocation/${s.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ textDecoration: 'underline' }}
+          >
+            Convocation
+          </Link>
+        </div>
+      )}
     </div>
   );
 };
@@ -57,6 +71,8 @@ const PlanningDashboard: React.FC = () => {
   const [dateChoisie, setDateChoisie] = useState<Record<number, string>>({});
   const [planifMessage, setPlanifMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [planifLoading, setPlanifLoading] = useState<number | null>(null);
+  const [validation, setValidation] = useState<StatutValidation | null>(null);
+  const [validMsg, setValidMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     chargerPlanning();
@@ -72,6 +88,31 @@ const PlanningDashboard: React.FC = () => {
       setError("Impossible de charger le planning des soutenances.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    chargerValidation();
+  }, []);
+
+  const chargerValidation = () =>
+    getStatutValidation().then(setValidation).catch(() => setValidation(null));
+
+  const handleValider = async () => {
+    setValidMsg(null);
+    try {
+      const r = await validerPlanning();
+      const ignorees = r.ignorees ?? [];
+      const detail = ignorees.map((i) => `#${i.id} : ${i.raison}`).join(' ; ');
+      setValidMsg({
+        // Rien n'a pu etre valide alors qu'il y avait des soutenances a traiter => erreur visible
+        type: r.validees === 0 && ignorees.length > 0 ? 'error' : 'success',
+        text: `${r.validees} soutenance(s) validee(s)` + (detail ? ` — ignorees : ${detail}` : '.'),
+      });
+      chargerValidation();
+      chargerPlanning();
+    } catch (e: any) {
+      setValidMsg({ type: 'error', text: e?.message ?? 'Echec de la validation.' });
     }
   };
 
@@ -115,6 +156,7 @@ const PlanningDashboard: React.FC = () => {
   return (
     <div style={{ padding: '1.5rem' }}>
       <style>{`
+  .sc-valide { color: #166534; font-weight: 600; margin-top: 3px; }
   .fc .fc-timegrid-slot { height: 4em; }
   .fc .fc-timegrid-event { box-shadow: none; }
   .soutenance-card { background: #eaf2ff; border-left: 3px solid #2563eb; border-radius: 6px;
@@ -199,7 +241,24 @@ const PlanningDashboard: React.FC = () => {
               )}
             </div>
           )}
-
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+  <div style={{ flex: 1 }}>
+    <strong>Validation du planning</strong>
+    <p style={{ margin: 0, color: '#64748b' }}>
+      {validation ? `${validation.validees} validee(s) sur ${validation.planifiees} planifiee(s)` : 'Statut indisponible'}
+    </p>
+  </div>
+  <button
+    onClick={handleValider}
+    disabled={!validation || validation.a_valider === 0}
+    style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', borderRadius: '0.375rem' }}
+  >
+    Valider le planning
+  </button>
+  {validMsg && (
+    <p style={{ width: '100%', margin: 0, color: validMsg.type === 'error' ? '#ef4444' : '#16a34a' }}>{validMsg.text}</p>
+  )}
+</div>
           <FullCalendar
             eventContent={renderEvent}
             slotDuration="00:30:00"

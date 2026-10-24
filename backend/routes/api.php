@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\IndisponibiliteController;
 use App\Http\Controllers\Api\AffectationJuryController;
 use App\Http\Controllers\Api\ConvocationController;
 use App\Http\Controllers\Api\ParametrePlanificationController;
+use App\Http\Controllers\Api\PlanningValidationController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -35,26 +36,31 @@ use App\Http\Controllers\Api\ParametrePlanificationController;
 |
 */
 
-// Planification & convocations (Lauris)
-Route::get('/planning/parametres', [ParametrePlanificationController::class, 'show']);
-Route::put('/planning/parametres', [ParametrePlanificationController::class, 'update']);
+// Planification & convocations (Lauris) — toutes les routes exigent une connexion
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/planning/validation', [PlanningValidationController::class, 'statut']);
+    Route::post('/planning/valider', [PlanningValidationController::class, 'valider']);
 
-Route::get('/planning/conflits', [PlanificationController::class, 'conflits']);
-Route::get('/soutenances/{soutenance}/convocation', [ConvocationController::class, 'show']);
-Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
-Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
-Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
+    Route::get('/planning/parametres', [ParametrePlanificationController::class, 'show']);
+    Route::put('/planning/parametres', [ParametrePlanificationController::class, 'update']);
 
-Route::get('/planning', [PlanificationController::class, 'index']);
-Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
-Route::post('/soutenances/{soutenance}/replanifier', [PlanificationController::class, 'replanifier']);
+    Route::get('/planning/conflits', [PlanificationController::class, 'conflits']);
+    Route::get('/soutenances/{soutenance}/convocation', [ConvocationController::class, 'show']);
+    Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
+    Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
+    Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
 
-Route::get('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'index']);
-Route::post('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'store']);
-Route::delete('/affectation-jury/{affectation}', [AffectationJuryController::class, 'destroy']);
+    Route::get('/planning', [PlanificationController::class, 'index']);
+    Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
+    Route::post('/soutenances/{soutenance}/replanifier', [PlanificationController::class, 'replanifier']);
 
-Route::get('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'index']);
-Route::post('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'store']);
+    Route::get('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'index']);
+    Route::post('/soutenances/{soutenance}/jurys', [AffectationJuryController::class, 'store']);
+    Route::delete('/affectation-jury/{affectation}', [AffectationJuryController::class, 'destroy']);
+
+    Route::get('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'index']);
+    Route::post('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'store']);
+});
 
 // Auth Routes (email + password — admin / jury)
 Route::post('/login', [AuthController::class, 'login']);

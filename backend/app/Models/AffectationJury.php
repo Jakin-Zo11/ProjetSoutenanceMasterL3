@@ -26,4 +26,16 @@ class AffectationJury extends Model
     {
         return $this->belongsTo(User::class, 'enseignant_id');
     }
+
+    protected static function booted(): void
+{
+    $invalider = function (AffectationJury $a) {
+        Soutenance::where('id', $a->soutenance_id)
+            ->whereNotNull('valide_le')
+            ->update(['valide_le' => null, 'valide_par' => null]);
+    };
+
+    static::saved($invalider);
+    static::deleted($invalider);
+}
 }

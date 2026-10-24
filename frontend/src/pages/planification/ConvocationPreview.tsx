@@ -9,7 +9,13 @@ const ConvocationPreview: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    // Vérification stricte de l'ID
+    if (!id || id === 'NaN' || isNaN(Number(id))) {
+      setError("Identifiant de soutenance invalide ou manquant.");
+      setLoading(false);
+      return;
+    }
+
     getConvocation(Number(id))
       .then((res) => {
         if (res.success) {
@@ -18,7 +24,7 @@ const ConvocationPreview: React.FC = () => {
           setError(res.message ?? 'Erreur de chargement.');
         }
       })
-      .catch(() => setError('Impossible de charger la convocation.'))
+      .catch((e) => setError(e?.message ?? 'Impossible de charger la convocation.'))
       .finally(() => setLoading(false));
   }, [id]);
 

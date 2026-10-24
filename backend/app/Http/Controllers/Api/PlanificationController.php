@@ -207,6 +207,29 @@ class PlanificationController extends Controller
             }
         }
 
+        // Conflit d'indisponibilite : un membre du jury est affecte
+        // sur un creneau ou il a declare ne pas etre disponible.
+        $conflitService = app(\App\Services\ConflitDetectionService::class);
+
+        foreach ($soutenances as $s) {
+            foreach ($s->affectationsJury as $affectation) {
+                if ($conflitService->enseignantIndisponible(
+                    $affectation->enseignant_id,
+                    $s->date_debut,
+                    $s->date_fin
+                )) {
+                    $conflits[] = [
+                        'type' => 'indisponibilite',
+                        'soutenance_a' => $s->id,
+                        'soutenance_b' => null,
+                        'enseignant_id' => $affectation->enseignant_id,
+                        'detail' =>
+                            "Enseignant #{$affectation->enseignant_id} affecte alors qu'il est indisponible sur ce creneau.",
+                    ];
+                }
+            }
+        }
+
         return response()->json(
             $conflits
         );

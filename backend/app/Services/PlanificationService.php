@@ -46,11 +46,16 @@ class PlanificationService
             }
 
             $nouveaux = $this->trouverJurysDisponibles(
-                $debut, $fin, count($rolesManquants), $conflitService, $idsPris
-            );
+    $debut,
+    $fin,
+    count($rolesManquants),
+    $conflitService,
+    $idsPris,
+    $rolesManquants
+);
             if (count($nouveaux) < count($rolesManquants)) {
-                continue;
-            }
+    continue;
+}
 
             return DB::transaction(function () use ($soutenance, $debut, $fin, $salle, $nouveaux, $rolesManquants) {
                 $soutenance->update([
@@ -60,12 +65,12 @@ class PlanificationService
                     'statut'     => 'planifiee',
                 ]);
 
-                foreach ($nouveaux as $index => $enseignant) {
-                    $soutenance->affectationsJury()->create([
-                        'enseignant_id' => $enseignant->id,
-                        'role'          => $rolesManquants[$index],
-                    ]);
-                }
+                foreach ($nouveaux as $nouveau) {
+    $soutenance->affectationsJury()->create([
+        'enseignant_id' => $nouveau['enseignant']->id,
+        'role' => $nouveau['role'],
+    ]);
+}
 
                 $soutenance->load('affectationsJury.enseignant');
 
@@ -154,36 +159,66 @@ class PlanificationService
         return null;
     }
 
-    protected function trouverJurysDisponibles(
-        Carbon $debut,
-        Carbon $fin,
-        int $nombre,
-        ConflitDetectionService $conflitService,
-        array $exclus = []
-    ): array {
-        $enseignants = \App\Models\User::role(['enseignant', 'president_jury', 'rapporteur', 'examinateur'])->get();
-        $disponibles = [];
+    
+protected function trouverJurysDisponibles(
+    Carbon $debut,
+    Carbon $fin,
+    int $nombre,
+    ConflitDetectionService $conflitService,
+    array $exclus = [],
+    array $rolesManquants = []
+): array {
+    $correspondanceRoles = [
+        'president' => ['president_jury', 'president_mention'],
+        'rapporteur' => ['rapporteur'],
+        'examinateur' => ['examinateur'],
+    ];
 
-        foreach ($enseignants as $enseignant) {
-            if (count($disponibles) >= $nombre) {
-                break;
-            }
+    $selection = [];
 
-            if (in_array($enseignant->id, $exclus)) {
-                continue;
-            }
-
-            if ($conflitService->enseignantIndisponible($enseignant->id, $debut, $fin)) {
-                continue;
-            }
-
-            if ($conflitService->enseignantDejaAffecte($enseignant->id, $debut, $fin)) {
-                continue;
-            }
-
-            $disponibles[] = $enseignant;
+    foreach ($rolesManquants as $rolePoste) {
+        if (count($selection) >= $nombre) {
+            break;
         }
 
-        return $disponibles;
+        $rolesAutorises = $correspondanceRoles[$rolePoste] ?? [];
+
+        $enseignants = \App\Models\User::role($rolesAutorises)
+            ->where('status', 'actif')
+            ->get();
+
+        foreach ($enseignants as $enseignant) {
+            if (in_array($enseignant->id, $exclus, true)) {
+                continue;
+            }
+
+            if (in_array($enseignant->id, array_column($selection, 'id'), true)) {
+                continue;
+            }
+
+            if ($conflitService->enseignantIndisponible(
+                $enseignant->id, $debut, $fin
+            )) {
+                continue;
+            }
+
+            if ($conflitService->enseignantDejaAffecte(
+                $enseignant->id, $debut, $fin
+            )) {
+                continue;
+            }
+
+            $selection[] = [
+                'id' => $enseignant->id,
+                'enseignant' => $enseignant,
+                'role' => $rolePoste,
+            ];
+
+            break;
+        }
     }
+
+    return $selection;
+}
+
 }

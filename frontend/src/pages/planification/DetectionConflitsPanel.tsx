@@ -36,10 +36,18 @@ const DetectionConflitsPanel: React.FC = () => {
                 background: '#fef2f2',
               }}
             >
-              <strong>{c.type === 'salle' ? 'Conflit de salle' : 'Conflit de jury'}</strong>
+              <strong>
+                {c.type === 'salle'
+                  ? 'Conflit de salle'
+                  : c.type === 'indisponibilite'
+                    ? 'Jury indisponible'
+                    : 'Conflit de jury'}
+              </strong>
               <p>{c.detail}</p>
               <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                Soutenances #{c.soutenance_a} et #{c.soutenance_b}
+                {c.soutenance_b
+                  ? `Soutenances #${c.soutenance_a} et #${c.soutenance_b}`
+                  : `Soutenance #${c.soutenance_a}`}
               </p>
             </li>
           ))}

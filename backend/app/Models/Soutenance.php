@@ -18,12 +18,26 @@ class Soutenance extends Model
         'date_debut',
         'date_fin',
         'statut',
+        'valide_le',
+        'valide_par',
     ];
 
     protected $casts = [
         'date_debut' => 'datetime',
         'date_fin'   => 'datetime',
+        'valide_le'  => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Changer le creneau ou la salle annule la validation du planning
+        static::updating(function (Soutenance $s) {
+            if ($s->isDirty(['date_debut', 'date_fin', 'salle_id']) && !$s->isDirty('valide_le')) {
+                $s->valide_le = null;
+                $s->valide_par = null;
+            }
+        });
+    }
 
     // --- RELATIONS DE BASE ---
 
@@ -40,6 +54,11 @@ class Soutenance extends Model
     public function salle()
     {
         return $this->belongsTo(Room::class, 'salle_id');
+    }
+
+    public function validePar()
+    {
+        return $this->belongsTo(User::class, 'valide_par');
     }
 
     public function affectationsJury()

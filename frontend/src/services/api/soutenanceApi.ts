@@ -14,6 +14,7 @@ export interface Soutenance {
   date_debut: string | null;
   date_fin: string | null;
   statut: 'en_attente' | 'planifiee' | 'en_cours' | 'terminee' | 'annulee';
+  valide_le?: string | null;
 
   etudiant?: { id: number; name: string; matricule?: string | null } | null;
   salle?: { id: number; name: string } | null;

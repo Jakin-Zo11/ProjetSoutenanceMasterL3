@@ -4,25 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Soutenance;
-use App\Models\Convocation;
+use App\Services\ConvocationService;
+use DomainException;
 
 class ConvocationController extends Controller
 {
-    public function show(Soutenance $soutenance)
+    public function show(Soutenance $soutenance, ConvocationService $convocationService)
     {
-        if (!$soutenance->date_debut || !$soutenance->salle_id) {
+        try {
+            $convocation = $convocationService->generer($soutenance);
+        } catch (DomainException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cette soutenance n\'est pas encore planifiee (date/salle manquante).',
+                'message' => $e->getMessage(),
             ], 422);
         }
 
         $soutenance->load(['affectationsJury.enseignant', 'salle', 'etudiant']);
-
-        $convocation = Convocation::firstOrCreate(
-            ['soutenance_id' => $soutenance->id],
-            ['generee_le' => now()]
-        );
 
         return response()->json([
             'success' => true,

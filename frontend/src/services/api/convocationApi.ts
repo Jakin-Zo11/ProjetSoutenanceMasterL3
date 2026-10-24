@@ -24,15 +24,15 @@ export interface ConvocationResponse {
 export async function getConvocation(soutenanceId: number): Promise<ConvocationResponse> {
   const response = await apiClient.get<ConvocationResponse>(
     `/soutenances/${soutenanceId}/convocation`,
-    { baseURL: API_ROOT }
+    { baseURL: API_ROOT, timeout: 15000 }
   );
   return response.data;
 }
 
 export interface Conflit {
-  type: 'salle' | 'jury';
+  type: 'salle' | 'jury' | 'indisponibilite';
   soutenance_a: number;
-  soutenance_b: number;
+  soutenance_b: number | null;
   detail: string;
 }
 
