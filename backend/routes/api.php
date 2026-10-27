@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\ParametrePlanificationController;
 use App\Http\Controllers\Api\PlanningValidationController;
 use App\Http\Controllers\Api\Student\StudentSimulationController;
 use App\Http\Controllers\Api\Student\StudentPortalController;
+use App\Http\Controllers\Api\PlanningOptimisationController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -52,6 +53,7 @@ Route::middleware(['auth:sanctum', 'role:admin_scolarite|president_mention'])->g
 
     Route::post('/soutenances/{soutenance}/convocation/diffuser', [ConvocationController::class, 'diffuser']);
     Route::post('/planning/convocations/diffuser', [ConvocationController::class, 'diffuserTout']);
+    Route::post('/planning/optimiser', [PlanningOptimisationController::class, 'optimiser']);
 
     Route::get('/planning', [PlanificationController::class, 'index']);
     Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);

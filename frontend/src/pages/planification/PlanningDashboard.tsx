@@ -8,6 +8,7 @@ import ReplanificationModal from './ReplanificationModal';
 import { Link } from 'react-router-dom';
 import { getStatutValidation, validerPlanning, StatutValidation } from '../../services/api/validationApi';
 import { diffuserToutesConvocations } from '../../services/api/convocationApi';
+import OptimisationPanel from './OptimisationPanel';
 
 const STATUT_COLORS: Record<string, string> = {
   en_attente: '#94a3b8',
@@ -301,6 +302,12 @@ const PlanningDashboard: React.FC = () => {
     )}
   </div>
 </div>
+          <OptimisationPanel
+            onApplied={() => {
+              chargerValidation();
+              chargerPlanning();
+            }}
+          />
           <FullCalendar
             eventContent={renderEvent}
             slotDuration="00:30:00"
