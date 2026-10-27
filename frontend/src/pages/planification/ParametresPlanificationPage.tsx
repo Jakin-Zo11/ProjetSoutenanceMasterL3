@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { getParametres, updateParametres } from '../../services/api/parametresApi';
 
 const ParametresPlanificationPage: React.FC = () => {
-  const [heureDebut, setHeureDebut] = useState('08:00');
+  const [heureDebut, setHeureDebut] = useState('08:30');
   const [heureFin, setHeureFin] = useState('17:00');
-  const [duree, setDuree] = useState(60);
+  const [duree, setDuree] = useState(30);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);

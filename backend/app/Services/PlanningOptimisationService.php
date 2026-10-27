@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
  * on cherche a deplacer des soutenances deja planifiees pour
  *   1. utiliser le moins de jours possible,
  *   2. supprimer les "trous" dans une journee,
- *   3. finir le plus tot possible,
+ *   3. faire commencer chaque journee a l'heure d'ouverture (ex. 08:30),
+ *   4. finir le plus tot possible,
  * sans jamais creer de conflit (salle, jury, indisponibilite) et sans toucher
  * aux soutenances dont le planning est deja valide.
  * Le jury de chaque soutenance n'est pas modifie : seuls le creneau et la salle changent.
@@ -24,6 +25,7 @@ class PlanningOptimisationService
     private const POIDS_CONFLIT = 1000;
     private const POIDS_JOUR = 100;
     private const POIDS_TROU = 10;   // par creneau de duree standard laisse vide
+    private const POIDS_DEBUT = 20;  // par creneau de retard sur l'heure d'ouverture de la journee (prioritaire sur les trous)
     private const POIDS_TARDIF = 1;  // par jour de retard sur le premier jour du planning
     private const PASSES_MAX = 10;
 
@@ -80,10 +82,29 @@ class PlanningOptimisationService
             $cursor->addDay();
         }
 
-        // Grille de creneaux (meme logique que la planification)
-        $grille = [];
+        // Heures d'ouverture / fermeture de la journee (parametres de planification)
         $h0 = $params->heure_debut_journee;
         $h1 = $params->heure_fin_journee;
+
+        // Quelques jours ouvres supplementaires pour la reconstruction (jamais utilises si inutiles)
+        $joursEtendus = $jours;
+        $c = $limite->copy()->addDay();
+        for ($ajoutes = 0; $ajoutes < 20; $c->addDay()) {
+            if (!$c->isWeekend()) {
+                $joursEtendus[] = $c->copy();
+                $ajoutes++;
+            }
+        }
+
+        // Etape 1 : reconstruction "premier creneau libre" (chaque journee commence a l'ouverture, sans trous).
+        // On ne la retient que si elle est strictement meilleure que le planning actuel.
+        $reconstruit = $this->reconstruire($p, $joursEtendus, $h0, $h1, $duree, $salles, $indispos);
+        if ($reconstruit !== null
+            && $this->coutTotal($reconstruit, $duree, $refJour, $h0, $indispos) < $this->coutTotal($p, $duree, $refJour, $h0, $indispos)) {
+            $p = $reconstruit;
+        }
+
+        // Etape 2 : amelioration locale (deplacements un par un tant que le cout baisse)
 
         $ids = array_keys($p);
         usort($ids, fn ($a, $b) => $p[$a]['debut']->timestamp <=> $p[$b]['debut']->timestamp);
@@ -96,7 +117,7 @@ class PlanningOptimisationService
                     continue;
                 }
 
-                $coutCourant = $this->cout($p, $duree, $refJour)
+                $coutCourant = $this->cout($p, $duree, $refJour, $h0)
                     + ($this->enConflit($id, $p, $indispos) ? self::POIDS_CONFLIT : 0);
 
                 $meilleur = null;
@@ -123,7 +144,7 @@ class PlanningOptimisationService
                                 continue;
                             }
 
-                            $cout = $this->cout($essai, $duree, $refJour);
+                            $cout = $this->cout($essai, $duree, $refJour, $h0);
                             if ($cout < $meilleurCout) {
                                 $meilleurCout = $cout;
                                 $meilleur = [$debut, $fin, $salle];
@@ -281,12 +302,19 @@ class PlanningOptimisationService
     }
 
     /** Cout du planning (plus petit = meilleur) : jours utilises, trous, retard. */
-    private function cout(array $p, int $duree, Carbon $refJour): int
+    private function cout(array $p, int $duree, Carbon $refJour, string $h0): int
     {
         $parJour = $this->parJour($p);
 
         $cout = count($parJour) * self::POIDS_JOUR;
         $cout += intdiv($this->minutesInactives($parJour), $duree) * self::POIDS_TROU;
+
+        // Retard du premier creneau de chaque journee sur l'heure d'ouverture
+        foreach ($parJour as $jourStr => $intervalles) {
+            $premier = min(array_column($intervalles, 0));
+            $ouverture = Carbon::parse($jourStr)->setTimeFromTimeString($h0)->timestamp;
+            $cout += intdiv(max(0, $premier - $ouverture), $duree * 60) * self::POIDS_DEBUT;
+        }
 
         foreach ($p as $x) {
             // nombre de jours entre le premier jour du planning et cette soutenance
@@ -294,6 +322,61 @@ class PlanningOptimisationService
         }
 
         return $cout;
+    }
+
+    /** Cout + penalite de conflits (pour comparer deux plannings entre eux). */
+    private function coutTotal(array $p, int $duree, Carbon $refJour, string $h0, $indispos): int
+    {
+        $conflits = 0;
+        foreach (array_keys($p) as $id) {
+            if ($this->enConflit($id, $p, $indispos)) {
+                $conflits++;
+            }
+        }
+
+        return $this->cout($p, $duree, $refJour, $h0) + $conflits * self::POIDS_CONFLIT;
+    }
+
+    /**
+     * Reconstruit le planning : les soutenances validees restent en place, les autres sont
+     * replacees (dans leur ordre actuel) sur le premier creneau libre sans conflit.
+     * Retourne null si une soutenance ne peut pas etre placee.
+     */
+    private function reconstruire(array $p, array $jours, string $h0, string $h1, int $duree, array $salles, $indispos): ?array
+    {
+        $etat = array_filter($p, fn ($x) => $x['fige']);
+        $mobiles = array_filter($p, fn ($x) => !$x['fige']);
+        uasort($mobiles, fn ($a, $b) => $a['debut']->timestamp <=> $b['debut']->timestamp);
+
+        foreach ($mobiles as $id => $x) {
+            $place = false;
+
+            foreach ($jours as $jour) {
+                foreach ($this->creneauxDuJour($jour, $h0, $h1, $duree) as [$debut, $fin]) {
+                    foreach (array_values(array_unique(array_merge([$x['salle']], $salles))) as $salle) {
+                        $essai = $etat;
+                        $essai[$id] = array_merge($x, ['debut' => $debut, 'fin' => $fin, 'salle' => $salle]);
+
+                        if (!$this->enConflit($id, $essai, $indispos)) {
+                            $etat = $essai;
+                            $place = true;
+                            break 3;
+                        }
+                    }
+                }
+            }
+
+            if (!$place) {
+                return null;
+            }
+        }
+
+        $resultat = [];
+        foreach (array_keys($p) as $id) {
+            $resultat[$id] = $etat[$id];
+        }
+
+        return $resultat;
     }
 
     /** La soutenance $id est-elle en conflit (salle, jury, indisponibilite) avec le reste du planning ? */

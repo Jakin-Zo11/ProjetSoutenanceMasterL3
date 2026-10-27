@@ -33,7 +33,7 @@ const OptimisationPanel: React.FC<Props> = ({ onApplied }) => {
         <div style={{ flex: 1 }}>
           <strong>Optimisation du planning</strong>
           <p style={{ margin: 0, color: '#64748b' }}>
-            Regroupe les soutenances sur moins de jours, sans trous et le plus tôt possible, sans créer de conflit.
+            Regroupe les soutenances sur moins de jours, en commençant chaque journée à l'heure d'ouverture (voir Paramètres), le plus tôt possible et sans créer de conflit.
             Les soutenances déjà validées ne sont pas déplacées.
           </p>
         </div>

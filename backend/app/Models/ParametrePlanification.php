@@ -17,9 +17,9 @@ class ParametrePlanification extends Model
     public static function actuel(): self
     {
         return static::first() ?? static::create([
-            'heure_debut_journee' => '08:00:00',
+            'heure_debut_journee' => '08:30:00',
             'heure_fin_journee' => '17:00:00',
-            'duree_minutes' => 60,
+            'duree_minutes' => 30,
         ]);
     }
 }
