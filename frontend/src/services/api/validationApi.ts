@@ -6,6 +6,8 @@ export interface StatutValidation {
   planifiees: number;
   validees: number;
   a_valider: number;
+  diffusees: number;
+  a_diffuser: number;
 }
 
 export async function getStatutValidation(): Promise<StatutValidation> {

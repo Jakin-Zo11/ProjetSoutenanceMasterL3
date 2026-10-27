@@ -7,6 +7,7 @@ import { getPlanning, planifierSoutenance, Soutenance } from '../../services/api
 import ReplanificationModal from './ReplanificationModal';
 import { Link } from 'react-router-dom';
 import { getStatutValidation, validerPlanning, StatutValidation } from '../../services/api/validationApi';
+import { diffuserToutesConvocations } from '../../services/api/convocationApi';
 
 const STATUT_COLORS: Record<string, string> = {
   en_attente: '#94a3b8',
@@ -73,6 +74,8 @@ const PlanningDashboard: React.FC = () => {
   const [planifLoading, setPlanifLoading] = useState<number | null>(null);
   const [validation, setValidation] = useState<StatutValidation | null>(null);
   const [validMsg, setValidMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [diffusing, setDiffusing] = useState(false);
+  const [diffMsg, setDiffMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     chargerPlanning();
@@ -97,6 +100,25 @@ const PlanningDashboard: React.FC = () => {
 
   const chargerValidation = () =>
     getStatutValidation().then(setValidation).catch(() => setValidation(null));
+
+  const handleDiffuser = async () => {
+    setDiffusing(true);
+    setDiffMsg(null);
+    try {
+      const r = await diffuserToutesConvocations();
+      const probleme = r.erreurs.length > 0 ? ` — ${r.erreurs.join(' ; ')}` : '';
+      setDiffMsg({
+        type: r.erreurs.length > 0 ? 'error' : 'success',
+        text: `${r.soutenances} convocation(s) diffusee(s) : ${r.notifications} notification(s) etudiant, ${r.mails_envoyes} e-mail(s) envoye(s)${probleme}`,
+      });
+      chargerValidation();
+      chargerPlanning();
+    } catch (e: any) {
+      setDiffMsg({ type: 'error', text: e?.message ?? 'Echec de la diffusion.' });
+    } finally {
+      setDiffusing(false);
+    }
+  };
 
   const handleValider = async () => {
     setValidMsg(null);
@@ -258,6 +280,26 @@ const PlanningDashboard: React.FC = () => {
   {validMsg && (
     <p style={{ width: '100%', margin: 0, color: validMsg.type === 'error' ? '#ef4444' : '#16a34a' }}>{validMsg.text}</p>
   )}
+  <div style={{ width: '100%', borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+    <div style={{ flex: 1 }}>
+      <strong>Diffusion des convocations</strong>
+      <p style={{ margin: 0, color: '#64748b' }}>
+        {validation
+          ? `${validation.diffusees} diffusee(s) — ${validation.a_diffuser} a diffuser`
+          : 'Statut indisponible'}
+      </p>
+    </div>
+    <button
+      onClick={handleDiffuser}
+      disabled={diffusing || !validation || validation.a_diffuser === 0}
+      style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: '0.375rem' }}
+    >
+      {diffusing ? 'Envoi...' : 'Diffuser les convocations'}
+    </button>
+    {diffMsg && (
+      <p style={{ width: '100%', margin: 0, color: diffMsg.type === 'error' ? '#ef4444' : '#16a34a' }}>{diffMsg.text}</p>
+    )}
+  </div>
 </div>
           <FullCalendar
             eventContent={renderEvent}

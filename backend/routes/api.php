@@ -50,6 +50,9 @@ Route::middleware(['auth:sanctum', 'role:admin_scolarite|president_mention'])->g
     Route::get('/planning/conflits', [PlanificationController::class, 'conflits']);
     Route::get('/soutenances/{soutenance}/convocation', [ConvocationController::class, 'show']);
 
+    Route::post('/soutenances/{soutenance}/convocation/diffuser', [ConvocationController::class, 'diffuser']);
+    Route::post('/planning/convocations/diffuser', [ConvocationController::class, 'diffuserTout']);
+
     Route::get('/planning', [PlanificationController::class, 'index']);
     Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
     Route::post('/soutenances/{soutenance}/replanifier', [PlanificationController::class, 'replanifier']);
@@ -60,6 +63,7 @@ Route::middleware(['auth:sanctum', 'role:admin_scolarite|president_mention'])->g
 
     Route::get('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'index']);
     Route::post('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'store']);
+    
 });
 
 // Indisponibilites : un enseignant gere les siennes, l'administration peut gerer celles de tous

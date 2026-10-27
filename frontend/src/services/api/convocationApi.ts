@@ -8,12 +8,14 @@ export interface Convocation {
   soutenance_id: number;
   contenu: string | null;
   generee_le: string | null;
+  diffusee_le?: string | null;
 }
 
 export interface ConvocationResponse {
   success: boolean;
   message?: string;
   convocation?: Convocation;
+  diffusee?: boolean;
   soutenance?: Soutenance & {
     salle?: { id: number; name: string; building: string | null };
     etudiant?: { id: number; name: string; email: string };
@@ -25,6 +27,44 @@ export async function getConvocation(soutenanceId: number): Promise<ConvocationR
   const response = await apiClient.get<ConvocationResponse>(
     `/soutenances/${soutenanceId}/convocation`,
     { baseURL: API_ROOT, timeout: 15000 }
+  );
+  return response.data;
+}
+
+export interface ResultatDiffusion {
+  success: boolean;
+  message?: string;
+  deja_diffusee: boolean;
+  destinataires: number;
+  notifications: number;
+  mails_envoyes: number;
+  erreurs: string[];
+  diffusee_le: string | null;
+}
+
+export interface ResultatDiffusionTout {
+  success: boolean;
+  soutenances: number;
+  deja_diffusees: number;
+  notifications: number;
+  mails_envoyes: number;
+  erreurs: string[];
+}
+
+export async function diffuserConvocation(soutenanceId: number, renvoyer = false): Promise<ResultatDiffusion> {
+  const response = await apiClient.post<ResultatDiffusion>(
+    `/soutenances/${soutenanceId}/convocation/diffuser`,
+    {},
+    { baseURL: API_ROOT, params: renvoyer ? { renvoyer: 1 } : undefined, timeout: 60000 }
+  );
+  return response.data;
+}
+
+export async function diffuserToutesConvocations(): Promise<ResultatDiffusionTout> {
+  const response = await apiClient.post<ResultatDiffusionTout>(
+    '/planning/convocations/diffuser',
+    {},
+    { baseURL: API_ROOT, timeout: 120000 }
   );
   return response.data;
 }

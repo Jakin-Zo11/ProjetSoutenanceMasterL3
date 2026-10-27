@@ -13,10 +13,13 @@ class Convocation extends Model
         'soutenance_id',
         'contenu',
         'generee_le',
+        'diffusee_le',
+        'diffusee_par',
     ];
 
     protected $casts = [
-        'generee_le' => 'datetime',
+        'generee_le'  => 'datetime',
+        'diffusee_le' => 'datetime',
     ];
 
     public function soutenance()

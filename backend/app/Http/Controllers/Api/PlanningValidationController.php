@@ -17,10 +17,21 @@ class PlanningValidationController extends Controller
         $planifiees = Soutenance::where('statut', 'planifiee')->count();
         $validees = Soutenance::where('statut', 'planifiee')->whereNotNull('valide_le')->count();
 
+        // Soutenances validees dont la convocation a ete diffusee apres la derniere validation
+        $diffusees = Soutenance::where('statut', 'planifiee')
+            ->whereNotNull('valide_le')
+            ->whereHas('convocation', function ($q) {
+                $q->whereNotNull('diffusee_le')
+                  ->whereColumn('convocations.diffusee_le', '>=', 'soutenances.valide_le');
+            })
+            ->count();
+
         return response()->json([
             'planifiees' => $planifiees,
             'validees'   => $validees,
             'a_valider'  => $planifiees - $validees,
+            'diffusees'  => $diffusees,
+            'a_diffuser' => $validees - $diffusees,
         ]);
     }
 
