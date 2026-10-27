@@ -38,8 +38,9 @@ use App\Http\Controllers\Api\Student\StudentPortalController;
 |
 */
 
-// Planification & convocations (Lauris) — toutes les routes exigent une connexion
-Route::middleware('auth:sanctum')->group(function () {
+// Planification & convocations (Lauris)
+// Gestion du planning : reservee a l'administration (admin_scolarite) et au president de mention.
+Route::middleware(['auth:sanctum', 'role:admin_scolarite|president_mention'])->group(function () {
     Route::get('/planning/validation', [PlanningValidationController::class, 'statut']);
     Route::post('/planning/valider', [PlanningValidationController::class, 'valider']);
 
@@ -48,9 +49,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/planning/conflits', [PlanificationController::class, 'conflits']);
     Route::get('/soutenances/{soutenance}/convocation', [ConvocationController::class, 'show']);
-    Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
-    Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
-    Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
 
     Route::get('/planning', [PlanificationController::class, 'index']);
     Route::post('/soutenances/{soutenance}/planifier', [PlanificationController::class, 'planifier']);
@@ -63,6 +61,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'index']);
     Route::post('/soutenances/{soutenance}/affectation-jury', [AffectationJuryController::class, 'store']);
 });
+
+// Indisponibilites : un enseignant gere les siennes, l'administration peut gerer celles de tous
+// (le controle "c'est bien le sien" est fait dans IndisponibiliteController).
+Route::middleware(['auth:sanctum', 'role:admin_scolarite|president_mention|enseignant'])->group(function () {
+    Route::get('/enseignants/{enseignantId}/indisponibilites', [IndisponibiliteController::class, 'index']);
+    Route::post('/indisponibilites', [IndisponibiliteController::class, 'store']);
+    Route::delete('/indisponibilites/{id}', [IndisponibiliteController::class, 'destroy']);
+});
+
 
 // Auth Routes (email + password — admin / jury)
 Route::post('/login', [AuthController::class, 'login']);

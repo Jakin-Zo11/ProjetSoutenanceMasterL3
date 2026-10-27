@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-
-interface Indisponibilite {
-  id?: number;
-  date_debut: string;
-  date_fin: string;
-  motif?: string;
-}
+import {
+  Indisponibilite,
+  getIndisponibilites,
+  createIndisponibilite,
+  deleteIndisponibilite,
+} from '../../services/api/indisponibiliteApi';
 
 interface Props {
   enseignantId: number;
@@ -13,57 +12,58 @@ interface Props {
 
 export const GestionIndisponibilitesCalendar: React.FC<Props> = ({ enseignantId }) => {
   const [indisponibilites, setIndisponibilites] = useState<Indisponibilite[]>([]);
-  const [dateDebut, setDateDebut] = useState('');
-  const [dateFin, setDateFin] = useState('');
+  const [date, setDate] = useState('');
+  const [heureDebut, setHeureDebut] = useState('');
+  const [heureFin, setHeureFin] = useState('');
   const [motif, setMotif] = useState('');
   const [loading, setLoading] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
-  // Charger les indisponibilités depuis le backend Laravel
-  const fetchIndisponibilites = async () => {
+  const charger = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/enseignants/${enseignantId}/indisponibilites`);
-      if (response.ok) {
-        const data = await response.json();
-        setIndisponibilites(data);
-      }
-    } catch (err) {
-      console.error("Erreur de chargement :", err);
+      setIndisponibilites(await getIndisponibilites(enseignantId));
+    } catch (e: any) {
+      setErreur(e?.message ?? 'Erreur de chargement.');
     }
   };
 
   useEffect(() => {
-    fetchIndisponibilites();
+    charger();
   }, [enseignantId]);
 
-  // Ajouter une indisponibilité
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dateDebut || !dateFin) return;
+    if (!date || !heureDebut || !heureFin) return;
 
     setLoading(true);
+    setErreur(null);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/enseignants/${enseignantId}/indisponibilites`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date_debut: dateDebut,
-          date_fin: dateFin,
-          motif: motif
-        }),
+      await createIndisponibilite({
+        enseignant_id: enseignantId,
+        date,
+        heure_debut: heureDebut,
+        heure_fin: heureFin,
+        motif: motif || undefined,
       });
-
-      if (response.ok) {
-        setDateDebut('');
-        setDateFin('');
-        setMotif('');
-        fetchIndisponibilites();
-      } else {
-        alert("Erreur lors de l'enregistrement");
-      }
-    } catch (err) {
-      console.error("Erreur d'envoi :", err);
+      setDate('');
+      setHeureDebut('');
+      setHeureFin('');
+      setMotif('');
+      await charger();
+    } catch (err: any) {
+      setErreur(err?.message ?? "Erreur lors de l'enregistrement.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setErreur(null);
+    try {
+      await deleteIndisponibilite(id);
+      setIndisponibilites((liste) => liste.filter((i) => i.id !== id));
+    } catch (err: any) {
+      setErreur(err?.message ?? 'Suppression impossible.');
     }
   };
 
@@ -71,56 +71,64 @@ export const GestionIndisponibilitesCalendar: React.FC<Props> = ({ enseignantId 
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <h2>Gestion des Indisponibilités (Enseignant #{enseignantId})</h2>
 
-      {/* Formulaire de saisie rapide */}
+      {erreur && <p style={{ color: '#ef4444' }}>{erreur}</p>}
+
       <form onSubmit={handleSubmit} style={{ background: '#f5f5f5', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
         <h3>Ajouter une plage d'indisponibilité</h3>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
           <div>
-            <label>Début : </label>
-            <input 
-              type="datetime-local" 
-              value={dateDebut} 
-              onChange={(e) => setDateDebut(e.target.value)} 
-              required 
-            />
+            <label>Date : </label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div>
-            <label>Fin : </label>
-            <input 
-              type="datetime-local" 
-              value={dateFin} 
-              onChange={(e) => setDateFin(e.target.value)} 
-              required 
-            />
+            <label>De : </label>
+            <input type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} required />
+          </div>
+          <div>
+            <label>À : </label>
+            <input type="time" value={heureFin} onChange={(e) => setHeureFin(e.target.value)} required />
           </div>
         </div>
         <div style={{ marginBottom: '10px' }}>
-          <input 
-            type="text" 
-            placeholder="Motif (ex: Conférence, Congé...)" 
-            value={motif} 
-            onChange={(e) => setMotif(e.target.value)} 
+          <input
+            type="text"
+            placeholder="Motif (ex: Conférence, Congé...)"
+            value={motif}
+            onChange={(e) => setMotif(e.target.value)}
             style={{ width: '100%', padding: '8px' }}
           />
         </div>
-        <button type="submit" disabled={loading} style={{ padding: '8px 16px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ padding: '8px 16px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
           {loading ? 'Enregistrement...' : 'Enregistrer la plage'}
         </button>
       </form>
 
-      {/* Liste des indisponibilités enregistrées */}
       <h3>Plages déclarées</h3>
       {indisponibilites.length === 0 ? (
         <p>Aucune indisponibilité enregistrée pour le moment.</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
-          {indisponibilites.map((item, index) => (
-            <li key={item.id || index} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+          {indisponibilites.map((item) => (
+            <li
+              key={item.id}
+              style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <div>
-                <strong>Du :</strong> {new Date(item.date_debut).toLocaleString('fr-FR')} <br />
-                <strong>Au :</strong> {new Date(item.date_fin).toLocaleString('fr-FR')}
+                <strong>Le :</strong> {new Date(item.date).toLocaleDateString('fr-FR')} &nbsp;
+                <strong>de</strong> {item.heure_debut.slice(0, 5)} <strong>à</strong> {item.heure_fin.slice(0, 5)}
                 {item.motif && <div><em>Motif : {item.motif}</em></div>}
               </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(item.id)}
+                style={{ padding: '4px 10px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Supprimer
+              </button>
             </li>
           ))}
         </ul>
