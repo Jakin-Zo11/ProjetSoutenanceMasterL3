@@ -67,7 +67,8 @@ class StudentSimulationController extends Controller
         $depot = $this->latestDepot($student);
         $defense = $depot ? $this->latestDefense($depot) : null;
 
-        if (! $defense) {
+        // Tant que le planning n'est pas valide, l'etudiant ne voit pas de soutenance planifiee
+        if (! $defense || $defense->valide_le === null) {
             return response()->json([
                 'success' => true,
                 'data' => null,
@@ -133,7 +134,7 @@ class StudentSimulationController extends Controller
     {
         return $depot->soutenances()
             ->with('room')
-            ->orderByDesc('date')
+            ->orderByDesc('date_debut')
             ->first();
     }
 

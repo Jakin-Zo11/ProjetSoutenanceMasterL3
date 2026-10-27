@@ -29,7 +29,8 @@ class StudentPortalController extends Controller
             'data' => [
                 'themeApproved' => $theme?->status === 'valide',
                 'thesisApproved' => $thesis?->status === 'valide',
-                'defenseScheduled' => $defense !== null && $defense->status !== 'annulee',
+                // Un planning non valide n'est pas encore communique a l'etudiant
+                'defenseScheduled' => $defense !== null && $defense->valide_le !== null && $defense->status !== 'annulee',
                 'resultPublished' => $defense?->status === 'terminee' && $result->isNotEmpty(),
                 'pvAvailable' => $defense?->status === 'terminee' && $result->isNotEmpty(),
             ],
@@ -67,7 +68,9 @@ class StudentPortalController extends Controller
     public function convocation(Request $request): JsonResponse
     {
         $defense = $this->studentDefense($request->user()->id);
-        if ($defense?->status === 'annulee') {
+
+        // La convocation n'existe que pour un planning valide (et une soutenance non annulee)
+        if ($defense?->status === 'annulee' || $defense?->valide_le === null) {
             $defense = null;
         }
 
@@ -240,7 +243,7 @@ class StudentPortalController extends Controller
             ->whereHas('depot', fn ($query) => $query
                 ->where('etudiant_id', $studentId)
                 ->where('type', 'memoire'))
-            ->latest('date')
+            ->latest('date_debut')
             ->first();
     }
 
@@ -320,7 +323,7 @@ class StudentPortalController extends Controller
             ->get();
 
         foreach ($defenses as $defense) {
-            if ($defense->status !== 'annulee') {
+            if ($defense->status !== 'annulee' && $defense->valide_le !== null) {
                 $events[] = [
                     'user_id' => $studentId,
                     'event_key' => "defense:{$defense->id}:updated:{$defense->updated_at->timestamp}",
